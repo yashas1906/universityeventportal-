@@ -55,7 +55,7 @@ def init_student_routes(app):
                         if s: school_name = s.name
                     winner_name = f"{winner_p.name} ({school_name})"
 
-            org_school = db.session.get(School, sub.organizing_school_id)
+            org_school = db.session.get(School, sub.organizing_school_id) if sub.organizing_school_id else None
             org_name = org_school.name if org_school else "University-Wide"
             
             ojas_details.append({
