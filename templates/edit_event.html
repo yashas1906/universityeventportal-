@@ -1,0 +1,1005 @@
+{% extends "base.html" %}
+{% block title %}Edit Event — {{ event.title }}{% endblock %}
+
+{% block head %}
+<style>
+  /* ════════════════════════════════════════════════════
+     STEPPER  (top progress bar)
+     ════════════════════════════════════════════════════ */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 2.5rem;
+    padding: 0.85rem 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--r-md);
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .step:hover {
+    background: var(--elevated);
+    color: var(--text);
+  }
+
+  .step.active {
+    background: var(--accent-wash);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .step.completed {
+    color: var(--sage);
+  }
+
+  .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-serif);
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--elevated);
+    border: 1px solid var(--border-med);
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .step.active .step-num {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .step.completed .step-num {
+    background: var(--sage);
+    color: #fff;
+    border-color: var(--sage);
+  }
+
+  .step-divider {
+    flex: 1;
+    height: 1px;
+    background: var(--divider);
+  }
+
+  /* ════════════════════════════════════════════════════
+     SECTIONS
+     ════════════════════════════════════════════════════ */
+  .form-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+
+  .form-section-head {
+    padding: 1.25rem 1.75rem;
+    border-bottom: 1px solid var(--divider);
+    background: var(--surface-muted);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .section-marker {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-serif);
+    font-size: 0.85rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .section-marker.sage {
+    background: var(--sage);
+  }
+
+  .section-marker.terra {
+    background: var(--terracotta);
+  }
+
+  .form-section-titles {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .form-section-title {
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .form-section-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+
+  .form-section-body {
+    padding: 1.75rem;
+  }
+
+  /* ════════════════════════════════════════════════════
+     TOGGLES & HELPERS
+     ════════════════════════════════════════════════════ */
+  .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  .row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 700px) {
+
+    .row-2,
+    .row-3 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .toggle-group {
+    display: inline-flex;
+    padding: 0.3rem;
+    background: var(--elevated);
+    border: 1px solid var(--border-med);
+    border-radius: var(--r-lg);
+  }
+
+  .toggle-opt {
+    padding: 0.45rem 1.2rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border-radius: var(--r-md);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: all 0.15s;
+  }
+
+  .toggle-opt.active {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border-med);
+    font-weight: 600;
+    box-shadow: var(--shadow-xs);
+  }
+
+  /* ════════════════════════════════════════════════════
+     PARTICIPANT ROWS & DROPZONE
+     ════════════════════════════════════════════════════ */
+  .participant-row {
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    background: var(--bg-canvas);
+    padding: 1.25rem;
+    margin-bottom: 0.85rem;
+    position: relative;
+  }
+
+  .participant-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+    border-bottom: 1px solid var(--divider);
+    padding-bottom: 0.5rem;
+  }
+
+  .participant-num {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .remove-row {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0.25rem;
+    border-radius: var(--r-sm);
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .remove-row:hover {
+    color: var(--crimson);
+    background: var(--crimson-light);
+  }
+
+  .dropzone {
+    margin-top: 1.25rem;
+    border: 1.5px dashed var(--border-strong);
+    background: var(--bg-canvas);
+    border-radius: var(--r-2xl);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dropzone:hover,
+  .dropzone.drag {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+  }
+
+  .dropzone-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.85rem;
+  }
+
+  /* ════════════════════════════════════════════════════
+     COMPETITION BLOCK
+     ════════════════════════════════════════════════════ */
+  .competition-row {
+    display: grid;
+    grid-template-columns: 50px 1fr 120px 1fr;
+    gap: 0.85rem;
+    align-items: end;
+    padding: 1rem;
+    background: var(--bg-canvas);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    margin-bottom: 0.65rem;
+  }
+
+  .rank-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 1.1rem;
+    background: var(--gold-light);
+    color: var(--gold);
+    border: 1px solid rgba(120, 53, 15, 0.25);
+  }
+
+  .rank-pill.silver {
+    background: var(--elevated);
+    color: #524d48;
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .rank-pill.bronze {
+    background: var(--terracotta-light);
+    color: var(--terracotta);
+    border-color: rgba(168, 84, 54, 0.25);
+  }
+
+  .action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-sm);
+    margin-top: 0.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  /* ════════════════════════════════════════════════════
+     MODAL OVERLAY (Live Data)
+     ════════════════════════════════════════════════════ */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal-content {
+    background: var(--surface);
+    width: 90%;
+    max-width: 900px;
+    border-radius: var(--r-xl);
+    padding: 2.5rem;
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.3s;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .modal-overlay.active .modal-content {
+    transform: translateY(0);
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s;
+    font-size: 1.25rem;
+  }
+
+  .modal-close:hover {
+    background: var(--surface-muted);
+    color: var(--text);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width: 1080px;">
+
+  <div
+    style="margin-bottom: 2rem; display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap;">
+    <div>
+      <p class="eyebrow eyebrow-navy" style="margin-bottom:0.5rem;">Management Console</p>
+      <h1 style="margin-bottom:0.3rem;">Edit Event Details</h1>
+      <p style="font-size:0.88rem; color:var(--muted);">
+        Capture event details, participants, and competition results in one place.
+      </p>
+    </div>
+    <a href="{{ url_for('explore') }}" class="btn btn-ghost btn-sm">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+      Back to Portal
+    </a>
+  </div>
+
+  <div class="stepper">
+    <div class="step active" data-step="1" onclick="goStep(1)">
+      <span class="step-num">1</span> Event Details
+    </div>
+    <div class="step-divider"></div>
+    <div class="step" data-step="2" onclick="goStep(2)">
+      <span class="step-num">2</span> Participants
+    </div>
+    <div class="step-divider"></div>
+    <div class="step" data-step="3" onclick="goStep(3)">
+      <span class="step-num">3</span> Results
+    </div>
+  </div>
+
+  <form id="event-form" method="POST" action="{{ url_for('edit_event', event_id=event.event_id) }}" enctype="multipart/form-data"
+    autocomplete="off">
+
+    <section class="form-section" id="section-1">
+      <div class="form-section-head">
+        <div class="section-marker">A</div>
+        <div class="form-section-titles">
+          <div class="form-section-title">Event Details</div>
+          <div class="form-section-sub">Core information about the event itself.</div>
+        </div>
+      </div>
+
+      <div class="form-section-body">
+        <div class="field" style="margin-bottom:1.25rem;">
+          <label class="field-label">Event Name *</label>
+          <input class="input" type="text" name="event_name" value="{{ event.title }}" required />
+        </div>
+
+        <div class="row-2" style="margin-bottom:1.25rem;">
+          <div>
+            <label class="field-label">Category *</label>
+            <!-- DYNAMIC DATALIST FOR CATEGORIES -->
+            <input list="category-options" name="category" class="input" value="{{ event.category }}"
+              required autocomplete="off">
+            <datalist id="category-options">
+              {% for cat in all_categories %}
+              <option value="{{ cat }}"></option>
+              {% endfor %}
+            </datalist>
+          </div>
+          <div>
+            <label class="field-label">Date &amp; Time *</label>
+            <input class="input" type="datetime-local" name="event_date" value="{{ event.event_date.strftime('%Y-%m-%dT%H:%M') if event.event_date else '' }}" required />
+          </div>
+        </div>
+
+        <div class="row-2" style="margin-bottom:1.25rem;">
+          <div>
+            <label class="field-label">Venue</label>
+            <input class="input" type="text" name="venue" value="{{ event.venue or '' }}" />
+          </div>
+          <div>
+            <label class="field-label">Incharge Club / Organizer *</label>
+            <input class="input" type="text" name="organizer" value="{{ event.incharge_club or '' }}" required />
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:1.25rem;">
+          <label class="field-label">Belongs to Flagship Fest? (Optional)</label>
+          <select name="parent_event_id" class="input" style="background: var(--surface-muted);">
+            <option value="">— Standalone Event (No Parent) —</option>
+            {% if existing_events %}
+            {% for parent in existing_events %}
+            {% if not parent.parent_event_id %}
+            <option value="{{ parent.event_id }}" {% if event.parent_event_id == parent.event_id %}selected{% endif %}>
+              {{ parent.title }}
+              {% if parent.organizing_school_id %} (School Level) {% else %} (University Level) {% endif %}
+            </option>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+          </select>
+          <p style="font-size:0.75rem; color:var(--muted); margin-top:0.3rem;">If this is a sub-event (like a
+            Hackathon), select its parent fest (like Srujana).</p>
+        </div>
+
+        <div class="field" style="margin-bottom:1rem;">
+          <label class="field-label">Description</label>
+          <textarea class="input" name="description"
+            placeholder="Brief overview, audience, theme, prerequisites...">{{ event.description }}</textarea>
+        </div>
+
+        <div class="field" style="margin-bottom:1rem; padding: 1rem; border: 1px dashed var(--border-med); border-radius: var(--r-lg);">
+          <label class="field-label">Event Thumbnail</label>
+          <input type="file" name="event_image" accept=".png, .jpg, .jpeg" class="input">
+          {% if event.image_url %}
+          <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+            <img src="{{ event.image_url }}" width="150" style="border-radius: var(--r-md); object-fit: cover;">
+            <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text); cursor: pointer;">
+              <input type="checkbox" name="remove_image" style="cursor: pointer;">
+              Delete current image
+            </label>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if session.get('role') == 'university_admin' or session.get('role') == 'university_head' or
+        session.get('admin_role') == 'university' %}
+        <div class="field"
+          style="background: #f4f7fb; padding: 1.5rem; border-radius: var(--r-xl); border: 1px solid rgba(30,58,138,0.12); margin-top: 1.75rem;">
+          <label class="field-label"
+            style="color: var(--accent); font-size: 0.88rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
+            Which School organized / represented this event?
+            <span style="font-weight: 400; color: var(--muted); font-size: 0.78rem;">(University Admin only)</span>
+          </label>
+          <select class="input" name="organizing_school_id" required
+            style="background: #ffffff; border: 1px solid rgba(0,0,0,0.1); box-shadow: var(--shadow-xs);">
+            <option value="">— Select school —</option>
+            <option value="1" {% if event.organizing_school_id == 1 %}selected{% endif %}>School of Arts, Humanities and Social Sciences</option>
+            <option value="2" {% if event.organizing_school_id == 2 %}selected{% endif %}>School of Mathematics and Natural Sciences</option>
+            <option value="3" {% if event.organizing_school_id == 3 %}selected{% endif %}>School of Biosciences</option>
+            <option value="4" {% if event.organizing_school_id == 4 %}selected{% endif %}>School of Management Sciences</option>
+            <option value="5" {% if event.organizing_school_id == 5 %}selected{% endif %}>School of Law, Governance and Public Policy</option>
+            <option value="6" {% if event.organizing_school_id == 6 %}selected{% endif %}>School of Engineering</option>
+            <option value="">University-wide (no single school)</option>
+          </select>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="form-section" id="section-2">
+      <div class="form-section-head">
+        <div class="section-marker sage">B</div>
+        <div class="form-section-titles">
+          <div class="form-section-title">Participant Details</div>
+          <div class="form-section-sub">Add participants individually or upload a roster.</div>
+        </div>
+      </div>
+
+      <div class="form-section-body">
+        <div
+          style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+          <div>
+            <p style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:0.2rem;">Event format</p>
+            <p style="font-size:0.78rem; color:var(--muted);">Choose individual entries or team-based participation.</p>
+          </div>
+          <div class="toggle-group" id="format-toggle">
+            <button type="button" class="toggle-opt active" data-format="solo" onclick="setFormat('solo')">Solo
+              Event</button>
+            <button type="button" class="toggle-opt" data-format="group" onclick="setFormat('group')">Group
+              Event</button>
+          </div>
+        </div>
+
+        <input type="hidden" name="format" id="format-input" value="solo" />
+
+        <div id="group-meta" class="row-2 hidden" style="margin-bottom:1.5rem;">
+          <div>
+            <label class="field-label">Group / Team Name *</label>
+            <input class="input" type="text" name="group_name" placeholder="e.g. Team Helix" />
+          </div>
+          <div>
+            <label class="field-label">Number of Participants *</label>
+            <input class="input" type="number" name="group_size" min="2" max="20" value="2"
+              onchange="syncGroupRows(this.value)" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 2rem; padding: 1.5rem; background: var(--surface-muted); border-radius: var(--r-xl); border: 1px solid var(--border-med); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h4 style="margin: 0 0 0.25rem 0; font-family: var(--font-serif); font-size: 1.1rem;">Manage Participants</h4>
+            <p style="margin: 0; font-size: 0.85rem; color: var(--muted);">View, edit, or delete existing participant data in real-time.</p>
+          </div>
+          <button type="button" class="btn btn-outline" onclick="openParticipantModal()">
+            Open Data Table
+          </button>
+        </div>
+
+        <div id="participant-rows"></div>
+
+
+        <button type="button" class="btn btn-outline" style="margin-top: 0.5rem;" onclick="addParticipantRow()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Another Participant
+        </button>
+
+        <div style="margin-top:2rem; padding-top:2rem; border-top:1px dashed var(--divider);">
+
+          <p
+            style="font-size:0.8rem; color:var(--muted); margin-bottom:0.5rem; font-family: var(--font-serif); font-style: italic;">
+            — or bulk upload — 
+            <a href="{{ url_for('download_roster_template') }}" style="margin-left: 1rem; font-style: normal; color: var(--accent); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Download CSV Template
+            </a>
+          </p>
+
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('roster-file').click()"
+            ondragover="event.preventDefault(); this.classList.add('drag');"
+            ondragleave="this.classList.remove('drag');" ondrop="handleDrop(event)">
+            <div class="dropzone-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </div>
+            <div class="form-section-title" style="margin-bottom:0.35rem;">Drag &amp; drop your Excel file here</div>
+            <p style="font-size: 0.83rem; color: var(--muted); line-height: 1.6;">
+              Or <strong style="color: var(--accent);">click to browse</strong> &nbsp;—&nbsp; <em>.xlsx, .csv</em><br />
+              Ensure your file matches the template format for a <strong><span id="format-hint">Solo</span></strong>
+              event.
+            </p>
+            <input type="file" id="roster-file" name="roster_file" accept=".xlsx,.xls,.csv" style="display:none;"
+              onchange="handleFile(this.files[0])" />
+          </div>
+          <div id="file-name"
+            style="margin-top:0.75rem; font-size:0.82rem; color:var(--sage); font-weight:600; text-align: center;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section" id="section-3">
+      <div class="form-section-head">
+        <div class="section-marker terra">C</div>
+        <div class="form-section-titles">
+          <div class="form-section-title">Competition Results</div>
+          <div class="form-section-sub">Optional — assign ranks &amp; prizes for winners.</div>
+        </div>
+      </div>
+
+      <div class="form-section-body">
+        <div
+          style="display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+          <div>
+            <p style="font-size:0.9rem; font-weight:600; color:var(--text); margin-bottom:0.2rem;">Is this a
+              competition?</p>
+            <p style="font-size:0.78rem; color:var(--muted);">For workshops, leave this off — only competitions need
+              ranks.</p>
+          </div>
+          <div class="toggle-group" id="comp-toggle">
+            <button type="button" class="toggle-opt" data-comp="no" onclick="setComp('no')">No</button>
+            <button type="button" class="toggle-opt active" data-comp="yes" onclick="setComp('yes')">Yes</button>
+          </div>
+        </div>
+
+        <input type="hidden" name="is_competition" id="comp-input" value="yes" />
+
+        <div id="comp-block">
+          <div class="competition-row">
+            <div class="rank-pill">1</div>
+            <div>
+              <label class="field-label">Winner (Participant / Team)</label>
+              <input class="input" type="text" name="rank1_name" placeholder="Pick from participants above" />
+            </div>
+            <div>
+              <label class="field-label">Prize ₹</label>
+              <input class="input" type="number" name="rank1_prize" placeholder="25000" />
+            </div>
+            <div>
+              <label class="field-label">Award / Title</label>
+              <input class="input" type="text" name="rank1_award" placeholder="Gold Medal, Cash Prize..." />
+            </div>
+          </div>
+
+          <div class="competition-row">
+            <div class="rank-pill silver">2</div>
+            <div>
+              <label class="field-label">Runner-up</label>
+              <input class="input" type="text" name="rank2_name" placeholder="Pick from participants above" />
+            </div>
+            <div>
+              <label class="field-label">Prize ₹</label>
+              <input class="input" type="number" name="rank2_prize" placeholder="15000" />
+            </div>
+            <div>
+              <label class="field-label">Award / Title</label>
+              <input class="input" type="text" name="rank2_award" placeholder="Silver Medal..." />
+            </div>
+          </div>
+
+          <div class="competition-row">
+            <div class="rank-pill bronze">3</div>
+            <div>
+              <label class="field-label">Second Runner-up</label>
+              <input class="input" type="text" name="rank3_name" placeholder="Pick from participants above" />
+            </div>
+            <div>
+              <label class="field-label">Prize ₹</label>
+              <input class="input" type="number" name="rank3_prize" placeholder="10000" />
+            </div>
+            <div>
+              <label class="field-label">Award / Title</label>
+              <input class="input" type="text" name="rank3_award" placeholder="Bronze Medal..." />
+            </div>
+          </div>
+        </div>
+
+        <div id="comp-empty" class="empty-state hidden" style="margin-top:1rem;">
+          Workshops &amp; non-competitive sessions don't require winners. Toggle on if results need to be recorded.
+        </div>
+      </div>
+    </section>
+
+    <div class="action-bar">
+      <div style="font-size:0.8rem; color:var(--muted);">
+        All required fields marked with <span style="color:var(--crimson); font-weight:700;">*</span>
+      </div>
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+        <a href="{{ url_for('explore') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Save Changes
+        </button>
+      </div>
+    </div>
+
+  </form>
+
+</div>
+
+<!-- PARTICIPANTS DATA MODAL -->
+<div class="modal-overlay" id="participantModal">
+  <div class="modal-content" style="max-width: 900px;">
+    <button type="button" class="modal-close" onclick="closeParticipantModal()">✖</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-right: 2rem;">
+      <h3 style="font-family: var(--font-serif); font-size: 1.5rem; margin: 0;">Real-time Participant Data</h3>
+    </div>
+    
+    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+      <button type="button" class="btn btn-sm" style="background: var(--crimson-light); color: var(--crimson); border: 1px solid rgba(220, 38, 38, 0.2);" onclick="deleteSelected()">
+        Delete All Registrations
+      </button>
+    </div>
+
+    <div style="overflow-y: auto; max-height: 50vh; border: 1px solid var(--border-med); border-radius: var(--r-md);">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+        <thead style="background: var(--surface-muted); position: sticky; top: 0; z-index: 1;">
+          <tr>
+            <th style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-med); width: 40px;">
+              <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" style="cursor: pointer;">
+            </th>
+            <th style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-med);">Name</th>
+            <th style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-med);">Roll Number</th>
+            <th style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-med); text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="participantsTableBody">
+          <tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--muted);">Loading real-time data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+  let currentEventId = {{ event.event_id }};
+
+  function openParticipantModal() {
+    document.getElementById('participantModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    fetchParticipantData();
+  }
+
+  function closeParticipantModal() {
+    document.getElementById('participantModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+
+  // Close modal if clicked outside
+  document.getElementById('participantModal').addEventListener('click', function(e) {
+    if(e.target === this) closeParticipantModal();
+  });
+
+  function fetchParticipantData() {
+    const tbody = document.getElementById('participantsTableBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--muted);">Fetching latest data from database...</td></tr>';
+    
+    fetch('/api/event/' + currentEventId + '/registrations')
+      .then(res => res.json())
+      .then(data => {
+        if(data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--muted);">No participants found.</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = data.map(p => `
+          <tr style="border-bottom: 1px solid var(--border-light);" id="regRow-${p.registration_id}">
+            <td style="padding: 0.75rem 1rem;">
+              <input type="checkbox" class="participant-cb" value="${p.registration_id}" style="cursor: pointer;">
+            </td>
+            <td style="padding: 0.75rem 1rem; font-weight: 500;">${p.name}</td>
+            <td style="padding: 0.75rem 1rem; color: var(--text-secondary);">${p.roll_number}</td>
+            <td style="padding: 0.75rem 1rem; text-align: right;">
+              <button type="button" class="btn btn-ghost btn-sm" style="color: var(--crimson); padding: 0.25rem 0.5rem;" onclick="deleteSingle(${p.registration_id})">Remove</button>
+            </td>
+          </tr>
+        `).join('');
+        document.getElementById('selectAll').checked = false;
+      })
+      .catch(err => {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--crimson);">Failed to load data.</td></tr>';
+      });
+  }
+
+  function toggleSelectAll(cb) {
+    document.querySelectorAll('.participant-cb').forEach(box => {
+      box.checked = cb.checked;
+    });
+  }
+
+  function deleteSingle(id) {
+    if(!confirm('Delete this participant?')) return;
+    fetch('/api/registration/' + id, {
+      method: 'DELETE'
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success) {
+        document.getElementById('regRow-' + id).remove();
+        showToast('Successfully deleted participant', 'success');
+      } else {
+        alert(data.error || 'Failed to delete');
+      }
+    })
+    .catch(err => alert('Network error occurred.'));
+  }
+
+  function deleteSelected() {
+    if(!confirm(`Are you sure you want to delete ALL registrations for this event?`)) return;
+    fetch('/api/event/' + currentEventId + '/registrations/all', {
+      method: 'DELETE'
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Successfully deleted all registrations', 'success');
+        const tbody = document.getElementById('participantsTableBody');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--muted);"><div class="empty-state" style="margin: 0 auto;">No participants left. All data cleared.</div></td></tr>';
+      } else {
+        alert(data.error || 'Failed to delete');
+      }
+    })
+    .catch(err => alert('Network error occurred.'));
+  }
+
+  function goStep(n) {
+
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.querySelector('.step[data-step="' + n + '"]').classList.add('active');
+    const target = document.getElementById('section-' + n);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  let participantCount = 0;
+
+  function setFormat(fmt) {
+    document.getElementById('format-input').value = fmt;
+    document.querySelectorAll('#format-toggle .toggle-opt').forEach(b => {
+      b.classList.toggle('active', b.dataset.format === fmt);
+    });
+    document.getElementById('format-hint').textContent = fmt === 'group' ? 'Group' : 'Solo';
+
+    const groupMeta = document.getElementById('group-meta');
+    if (fmt === 'group') groupMeta.classList.remove('hidden');
+    else groupMeta.classList.add('hidden');
+
+    document.getElementById('participant-rows').innerHTML = '';
+    participantCount = 0;
+
+    if (fmt === 'group') {
+      const size = parseInt(document.querySelector('[name="group_size"]').value || '2', 10);
+      syncGroupRows(size);
+    } else {
+      addParticipantRow();
+    }
+  }
+
+  function syncGroupRows(size) {
+    size = Math.max(1, Math.min(20, parseInt(size, 10) || 2));
+    document.getElementById('participant-rows').innerHTML = '';
+    participantCount = 0;
+    for (let i = 0; i < size; i++) addParticipantRow();
+  }
+
+  function addParticipantRow() {
+
+    participantCount++;
+    const idx = participantCount;
+    const wrap = document.createElement('div');
+    wrap.className = 'participant-row';
+    wrap.dataset.idx = idx;
+    wrap.innerHTML = `
+    <div class="participant-row-head">
+      <span class="participant-num">Participant ${String(idx).padStart(2, '0')}</span>
+      <button type="button" class="remove-row" onclick="removeRow(this)" title="Remove">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="row-2" style="margin-bottom:1rem;">
+      <div>
+        <label class="field-label">Participant Name *</label>
+        <input class="input" type="text" name="p_name_${idx}" placeholder="Full name" required/>
+      </div>
+      <div>
+        <label class="field-label">Roll Number *</label>
+        <input class="input" type="text" name="p_roll_${idx}" placeholder="CU2024XXXXX" required/>
+      </div>
+    </div>
+    <div class="row-3">
+      <div>
+        <label class="field-label">Department</label>
+        <input class="input" type="text" name="p_dept_${idx}" placeholder="e.g. CSE"/>
+      </div>
+      <div>
+        <label class="field-label">Year of Study</label>
+        <select class="input" name="p_year_${idx}">
+          <option value="1" {% if event.organizing_school_id == 1 %}selected{% endif %}>1st Year</option>
+          <option value="2" {% if event.organizing_school_id == 2 %}selected{% endif %}>2nd Year</option>
+          <option value="3" {% if event.organizing_school_id == 3 %}selected{% endif %}>3rd Year</option>
+          <option value="4" {% if event.organizing_school_id == 4 %}selected{% endif %}>4th Year</option>
+          <option value="5" {% if event.organizing_school_id == 5 %}selected{% endif %}>5th+ / PG</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Affiliation</label>
+        <div class="toggle-group" style="padding: 0.2rem; width: 100%; display: flex;" data-name="p_internal_${idx}">
+          <button type="button" class="toggle-opt active" style="flex:1;" data-val="1" onclick="pickSeg(this)">Internal</button>
+          <button type="button" class="toggle-opt" style="flex:1;" data-val="0" onclick="pickSeg(this)">External</button>
+        </div>
+        <input type="hidden" name="p_internal_${idx}" value="1"/>
+      </div>
+    </div>
+  `;
+    document.getElementById('participant-rows').appendChild(wrap);
+  }
+
+  function removeRow(btn) {
+    btn.closest('.participant-row').remove();
+  }
+
+  function pickSeg(btn) {
+    const seg = btn.parentElement;
+    seg.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const name = seg.dataset.name;
+    const hidden = seg.parentElement.parentElement.querySelector('input[type="hidden"][name="' + name + '"]');
+    if (hidden) hidden.value = btn.dataset.val;
+  }
+
+  function setComp(val) {
+    document.getElementById('comp-input').value = val;
+    document.querySelectorAll('#comp-toggle .toggle-opt').forEach(b => {
+      b.classList.toggle('active', b.dataset.comp === val);
+    });
+    document.getElementById('comp-block').classList.toggle('hidden', val === 'no');
+    document.getElementById('comp-empty').classList.toggle('hidden', val === 'yes');
+  }
+
+  function handleDrop(ev) {
+    ev.preventDefault();
+    ev.currentTarget.classList.remove('drag');
+    if (ev.dataTransfer.files && ev.dataTransfer.files[0]) {
+      document.getElementById('roster-file').files = ev.dataTransfer.files;
+      handleFile(ev.dataTransfer.files[0]);
+    }
+  }
+  function handleFile(file) {
+    if (!file) return;
+    document.getElementById('file-name').innerHTML = '✓ Loaded: <span style="color: var(--text);">' + file.name + '</span>  <span style="color:var(--text-muted); font-weight:400;">(' + (file.size / 1024).toFixed(1) + ' KB)</span>';
+    showToast('Roster loaded: ' + file.name, 'success');
+  }
+
+  addParticipantRow();
+</script>
+{% endblock %}

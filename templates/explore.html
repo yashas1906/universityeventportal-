@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+{% block title %}Explore — Event Space{% endblock %}
+
+{% block head %}
+<style>
+  /* ── HERO WIDGETS ── */
+  .hero-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+  @media (max-width: 760px) { .hero-grid { grid-template-columns: 1fr; } }
+
+  .hero-widget {
+    position: relative; overflow: hidden;
+    border-radius: var(--r-xl);
+    padding: 2.25rem 2rem; min-height: 260px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    text-decoration: none; cursor: pointer;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+  }
+  .hero-widget:hover { 
+    box-shadow: var(--shadow-md); 
+    border-color: var(--border-med);
+    transform: translateY(-2px); 
+  }
+
+  /* University widget — Official Navy */
+  .hw-university { border-top: 3px solid var(--accent); }
+  
+  /* School widget — Official Gold */
+  .hw-school { border-top: 3px solid var(--gold); }
+
+  .hw-eyebrow {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 0.5rem;
+  }
+  .hw-title {
+    font-family: var(--font-sans);
+    font-size: 1.8rem; font-weight: 700; line-height: 1.15;
+    color: var(--text); margin-bottom: 0.6rem; letter-spacing: -0.02em;
+  }
+  .hw-desc {
+    font-size: 0.88rem; color: var(--muted);
+    line-height: 1.6; margin-bottom: 1.25rem; max-width: 320px;
+  }
+  .hw-cta {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.85rem; font-weight: 600;
+    padding: 0.45rem 1rem; border-radius: var(--r-md);
+    border: 1px solid; text-decoration: none; transition: all 0.15s;
+  }
+  
+  .cta-navy {
+    color: var(--accent); border-color: rgba(15,44,89,0.2);
+    background: var(--accent-wash);
+  }
+  .cta-navy:hover { background: var(--accent-light); }
+  
+  .cta-gold {
+    color: var(--gold); border-color: rgba(200,156,76,0.25);
+    background: var(--gold-light);
+  }
+  .cta-gold:hover { background: #faebd2; }
+
+  /* ── EVENT ROW ── */
+  .event-row {
+    display: flex; align-items: flex-start; gap: 1.25rem;
+    padding: 1.1rem 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-xs);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    flex: 0 0 auto;
+    width: 450px;
+    max-width: 90vw;
+    scroll-snap-align: start;
+  }
+  .event-row:hover { border-color: var(--border-med); box-shadow: var(--shadow-sm); }
+  
+  .event-title {
+    font-size: 0.95rem; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    margin-bottom: 0.35rem; letter-spacing: -0.01em;
+  }
+  .event-meta { font-size: 0.8rem; color: var(--muted); }
+
+  /* ── FORCED CARD WIDTH ── */
+  .event-carousel {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* FIX: Applied rigid width to prevent card squishing */
+  .event-card-visual {
+    flex: 0 0 450px !important; 
+    min-width: 450px !important;
+    max-width: 90vw;
+    position: relative; /* Ensures the button inside it has its own space */
+  }
+
+  /* Ensure the button is always on top and clickable */
+  .ecv-actions {
+    position: relative;
+    z-index: 50; 
+  }
+
+  /* FIX: Ensure the modal overlay responds to the 'active' class from base.html */
+  #register-modal-overlay.active {
+    display: flex !important;
+  }
+
+  .modal-lg {
+    background: #ffffff; border-radius: 12px; padding: 2rem;
+    width: 95%; max-width: 750px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    animation: modal-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes modal-pop {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .field-label { display: block; font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 0.4rem; }
+  .input { width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; font-family: inherit; box-sizing: border-box; }
+
+  .segmented-control { display: inline-flex; background: #f1f5f9; border-radius: 8px; padding: 4px; border: 1px solid #e2e8f0; }
+  .seg-btn { padding: 6px 16px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: #64748b; transition: all 0.2s; }
+  .seg-btn.active { background: white; color: #0f172a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+  .participant-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; position: relative; }
+  .participant-header { font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 1.25rem; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; }
+  .remove-btn { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 0; line-height: 1; transition: color 0.15s; }
+  .remove-btn:hover { color: #ef4444; }
+
+  .btn-add { background: none; border: 1px solid #cbd5e1; padding: 0.5rem 1rem; border-radius: 6px; color: #1e3a8a; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.15s; font-size: 0.85rem; }
+  .btn-add:hover { background: #f8fafc; }
+  .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+  .btn-cancel { padding: 0.6rem 1.2rem; border: 1px solid #cbd5e1; border-radius: 6px; background: transparent; cursor: pointer; font-weight: 600; color: #475569; }
+  .btn-confirm { padding: 0.6rem 1.2rem; border: none; border-radius: 6px; background: #1e3a8a; color: #ffffff; font-weight: 600; cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <div style="margin-bottom:2.5rem; padding-bottom:1.5rem; border-bottom:1px solid var(--divider);">
+    <p class="eyebrow eyebrow-navy" style="margin-bottom:0.5rem;">
+      {% if session.get('role') == 'student' %}Student Portal
+      {% elif session.get('role') %}Administration
+      {% else %}Welcome{% endif %}
+    </p>
+    <h1 style="margin-bottom:0.4rem;">
+      {% if session.get('role') == 'student' %}Welcome to Event Space
+      {% elif session.get('role') %}Event Space Console
+      {% else %}Event Space{% endif %}
+    </h1>
+    <p style="color:var(--muted); font-size:0.95rem;">
+      Browse events, check the calendar, and explore what&#39;s happening across campus.
+      {% if not session.get('role') %}
+        <a href="{{ url_for('auth') }}" style="color:var(--accent); font-weight:600; text-decoration:none; margin-left:0.35rem;">Sign in</a> for full access.
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="hero-grid">
+
+    <a href="{{ url_for('university_events') }}" class="hero-widget hw-university">
+      <div>
+        <p class="hw-eyebrow" style="color:var(--accent);">University-Wide</p>
+        <h2 class="hw-title">University<br>Events</h2>
+        <p class="hw-desc">Ojas Fest, Intramurals, NCC &amp; NSS drives, and all cross-campus activities.</p>
+        <span class="hw-cta cta-navy">
+          Explore events
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </span>
+      </div>
+    </a>
+
+    <a href="{{ url_for('school_events') }}" class="hero-widget hw-school">
+      <div>
+        <p class="hw-eyebrow" style="color:var(--gold);">Academic Schools</p>
+        <h2 class="hw-title">School<br>Events</h2>
+        <p class="hw-desc">Events hosted by all six academic schools — Engineering hackathons, Law moot courts, and more.</p>
+        <span class="hw-cta cta-gold">
+          Browse schools
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </span>
+      </div>
+    </a>
+
+  </div>
+
+  <div style="margin-bottom:3rem;">
+    <div class="section-header">
+      <span class="section-title">Upcoming Events</span>
+      <span class="section-count">{{ upcoming|length }}</span>
+    </div>
+
+    {% if upcoming %}
+      <div class="carousel-container">
+        <button class="scroll-btn left" onclick="slideCarousel(this, -1)">&#10094;</button>
+        <div class="event-carousel">
+        {% for event in upcoming %}
+        <div class="event-card-visual {% if event.event_id == 1 %}megafest-card{% endif %}"
+          data-title="{{ event.title | escape }}"
+          data-date="{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'TBA' }}"
+          data-img="{{ event.image_url or '' }}"
+          data-desc="{{ event.description | escape }}"
+          data-cat="{{ event.category | escape }}"
+          data-venue="{{ event.venue | escape }}"
+          data-org="{{ event.incharge_club | escape }}"
+          onclick="{% if event.event_id == 1 %}openOjasModal(){% else %}openUniversalModal(this){% endif %}">
+
+          <div class="ecv-thumb">
+            {% if event.image_url %}
+              <img src="{{ event.image_url }}" alt="{{ event.title }}">
+            {% else %}
+              <div class="ecv-thumb-placeholder">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="ecv-date">
+            <span class="ecv-month">{{ event.event_date.strftime('%b') if event.event_date else 'TBA' }}</span>
+            <span class="ecv-day">{{ event.event_date.strftime('%d') if event.event_date else '--' }}</span>
+          </div>
+
+          <div class="ecv-info">
+            <div class="ecv-tags">
+              <span class="tag tag-navy">{{ event.category }}</span>
+              <span class="tag tag-muted">{{ event.incharge_club }}</span>
+            </div>
+            <h3 class="ecv-title">{{ event.title }}</h3>
+            <p class="ecv-meta">📍 {{ event.venue or 'Venue TBA' }}</p>
+          </div>
+
+          <div class="ecv-actions">
+            <a href="/api/event/{{ event.event_id }}/export" class="icon-btn" title="Export to calendar" onclick="event.stopPropagation()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </a>
+            {% if session.get('role') == 'student' %}
+            <button type="button" class="btn btn-primary btn-sm" 
+                    data-event-id="{{ event.event_id }}" 
+                    data-event-title="{{ event.title }}" 
+                    onclick="handleRegisterClick(event, this)">
+              Register
+            </button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+        </div>
+        <button class="scroll-btn right" onclick="slideCarousel(this, 1)">&#10095;</button>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <svg class="empty-state-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        No upcoming events scheduled yet.
+      </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="section-header">
+      <span class="section-title" style="color:var(--muted); font-size:0.95rem;">Recent Past Events</span>
+      <span class="section-count">{{ past|length if past else 0 }}</span>
+    </div>
+    {% if past %}
+      <div class="carousel-container">
+        <button class="scroll-btn left" onclick="slideCarousel(this, -1)">&#10094;</button>
+        <div class="event-carousel">
+        {% for event in past %}
+        <div class="event-card-visual is-past {% if event.event_id == 1 %}megafest-card{% endif %}"
+          data-title="{{ event.title | escape }}"
+          data-date="{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'TBA' }}"
+          data-img="{{ event.image_url or '' }}"
+          data-desc="{{ event.description | escape }}"
+          data-cat="{{ event.category | escape }}"
+          data-venue="{{ event.venue | escape }}"
+          data-org="{{ event.incharge_club | escape }}"
+          onclick="{% if event.event_id == 1 %}openOjasModal(){% else %}openUniversalModal(this){% endif %}">
+
+          <div class="ecv-thumb">
+            {% if event.image_url %}
+              <img src="{{ event.image_url }}" alt="{{ event.title }}">
+            {% else %}
+              <div class="ecv-thumb-placeholder">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="ecv-date">
+            <span class="ecv-month">{{ event.event_date.strftime('%b') if event.event_date else 'TBA' }}</span>
+            <span class="ecv-day">{{ event.event_date.strftime('%d') if event.event_date else '--' }}</span>
+          </div>
+
+          <div class="ecv-info">
+            <div class="ecv-tags">
+              <span class="tag tag-muted">{{ event.category }}</span>
+            </div>
+            <h3 class="ecv-title">{{ event.title }}</h3>
+            <p class="ecv-meta">📍 {{ event.venue or 'Venue TBA' }}</p>
+          </div>
+
+          <div class="ecv-actions">
+            <a href="/api/event/{{ event.event_id }}/export" class="icon-btn" title="Export" onclick="event.stopPropagation()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+        </div>
+        <button class="scroll-btn right" onclick="slideCarousel(this, 1)">&#10095;</button>
+      </div>
+    {% else %}
+      <div class="empty-state" style="padding:2rem;">No past events recorded.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Advanced Dynamic Registration Modal -->
+<div id="register-modal-overlay" class="modal-overlay">
+  <div class="modal-card modal-lg">
+    <h3 id="modal-event-title" style="margin-bottom: 0.25rem;">Register for Event</h3>
+    <p class="modal-desc" style="margin-bottom: 1.5rem;">Provide your details below to confirm your spot.</p>
+
+    <!-- Solo / Group Toggle -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <div>
+        <h4 style="margin: 0; font-size: 0.95rem; color: var(--text);">Event format</h4>
+        <span style="font-size: 0.8rem; color: var(--muted);">Choose individual entries or team-based participation.</span>
+      </div>
+      <div class="segmented-control">
+        <button type="button" id="btn-mode-solo" class="seg-btn active" onclick="setRegMode('solo')">Solo Event</button>
+        <button type="button" id="btn-mode-group" class="seg-btn" onclick="setRegMode('group')">Group Event</button>
+      </div>
+    </div>
+
+    <!-- Group Details (Hidden in Solo Mode) -->
+    <div id="group-details-section" class="grid-2" style="display: none; margin-bottom: 1.5rem;">
+      <div>
+        <label class="field-label">Group / Team Name *</label>
+        <input type="text" id="modal-team-name" class="input" placeholder="e.g. Team Helix">
+      </div>
+      <div>
+        <label class="field-label">Number of Participants *</label>
+        <input type="number" id="group-count" class="input" value="1" readonly style="background: #f8fafc; color: #94a3b8; pointer-events: none;">
+      </div>
+    </div>
+
+    <!-- Dynamic Participants Container -->
+    <div id="participants-container">
+      <!-- Participant cards injected here via JS -->
+    </div>
+
+    <!-- Add Participant Button (Hidden in Solo Mode) -->
+    <button type="button" id="add-participant-btn" class="btn-add" style="display: none; margin-bottom: 2rem;" onclick="addParticipantCard()">
+      + Add Another Participant
+    </button>
+
+    <!-- Footer Actions -->
+    <div class="modal-actions" style="border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 1rem;">
+      <button type="button" class="btn-cancel" onclick="closeRegisterModal()">Cancel</button>
+      <button type="button" class="btn-confirm" id="btn-confirm-reg" onclick="submitRegistration()">Confirm Registration</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentEventId = null;
+  let regMode = 'solo';
+
+  // 0. NEW HELPER: Safely extracts data without breaking quotes
+  function handleRegisterClick(e, btnElement) {
+    e.stopPropagation(); // Stops the card behind it from opening
+    const eventId = btnElement.getAttribute('data-event-id');
+    const eventTitle = btnElement.getAttribute('data-event-title');
+    openRegisterModal(eventId, eventTitle);
+  }
+
+  // 1. Open Modal
+  function openRegisterModal(eventId, eventTitle) {
+    currentEventId = eventId;
+    document.getElementById('modal-event-title').innerText = eventTitle ? `Register for ${eventTitle}` : 'Register for Event';
+    
+    // Reset form to Solo mode and open
+    setRegMode('solo');
+    document.getElementById('modal-team-name').value = '';
+    
+    // 🔥 NEW: Use classList to safely show the modal
+    document.getElementById('register-modal-overlay').classList.add('active');
+  }
+
+  // 2. Close Modal
+  function closeRegisterModal() {
+    // 🔥 NEW: Use classList to safely hide the modal
+    document.getElementById('register-modal-overlay').classList.remove('active');
+    currentEventId = null;
+  }
+
+  // 3. Toggle between Solo and Group
+  function setRegMode(mode) {
+    regMode = mode;
+    document.getElementById('btn-mode-solo').classList.toggle('active', mode === 'solo');
+    document.getElementById('btn-mode-group').classList.toggle('active', mode === 'group');
+    
+    document.getElementById('group-details-section').style.display = mode === 'group' ? 'grid' : 'none';
+    document.getElementById('add-participant-btn').style.display = mode === 'group' ? 'inline-flex' : 'none';
+
+    // Wipe and generate the first card
+    document.getElementById('participants-container').innerHTML = '';
+    addParticipantCard();
+  }
+
+  // 4. Add a Dynamic Participant Card
+  function addParticipantCard() {
+    const container = document.getElementById('participants-container');
+    const count = container.children.length + 1;
+    const isSolo = regMode === 'solo';
+    
+    // Only show the remove 'X' button if it's a group event AND it's not the first person
+    const removeHtml = (isSolo || count === 1) ? '' : `<button type="button" class="remove-btn" onclick="removeCard(this)">✕</button>`;
+
+    const html = `
+      <div class="participant-card">
+        <div class="participant-header">
+          <span class="p-title">PARTICIPANT 0${count}</span>
+          ${removeHtml}
+        </div>
+        <div class="grid-2" style="margin-bottom: 1rem;">
+          <div>
+            <label class="field-label">Participant Name *</label>
+            <input type="text" class="input p-name" placeholder="Full name">
+          </div>
+          <div>
+            <label class="field-label">Roll Number *</label>
+            <input type="text" class="input p-roll" placeholder="CU2024XXXXX">
+          </div>
+        </div>
+        <div class="grid-3">
+          <div>
+            <label class="field-label">Department</label>
+            <input type="text" class="input p-dept" placeholder="e.g. CSE">
+          </div>
+          <div>
+            <label class="field-label">Year of Study</label>
+            <select class="input p-year">
+              <option value="1st Year">1st Year</option>
+              <option value="2nd Year">2nd Year</option>
+              <option value="3rd Year">3rd Year</option>
+              <option value="4th Year">4th Year</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Affiliation</label>
+            <div class="segmented-control" style="width:100%; display:flex;">
+              <button type="button" class="seg-btn active" style="flex:1" onclick="toggleAffil(this, 'Internal')">Internal</button>
+              <button type="button" class="seg-btn" style="flex:1" onclick="toggleAffil(this, 'External')">External</button>
+            </div>
+            <input type="hidden" class="p-affil" value="Internal">
+          </div>
+        </div>
+      </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+    updateGroupCount();
+  }
+
+  // 5. Remove a Participant Card
+  function removeCard(btn) {
+    btn.closest('.participant-card').remove();
+    
+    // Re-number the remaining cards (01, 02, etc.)
+    const cards = document.querySelectorAll('.participant-card');
+    cards.forEach((card, index) => {
+      card.querySelector('.p-title').innerText = `PARTICIPANT 0${index + 1}`;
+    });
+    updateGroupCount();
+  }
+
+  function updateGroupCount() {
+    const container = document.getElementById('participants-container');
+    if (document.getElementById('group-count')) {
+      document.getElementById('group-count').value = container.children.length;
+    }
+  }
+
+  // 6. Handle Internal/External toggle for each specific card
+  function toggleAffil(btn, val) {
+    const wrapper = btn.closest('.segmented-control');
+    wrapper.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    wrapper.nextElementSibling.value = val; // Set the hidden input value
+  }
+
+  // 7. Submit the complex payload to Flask Backend
+  async function submitRegistration() {
+    if (!currentEventId) return;
+    
+    const teamName = document.getElementById('modal-team-name').value.trim();
+    const cards = document.querySelectorAll('.participant-card');
+    let participants = [];
+    
+    // Validate and collect data
+    for (let card of cards) {
+      const name = card.querySelector('.p-name').value.trim();
+      const roll = card.querySelector('.p-roll').value.trim();
+      
+      if (!name || !roll) {
+        alert('Please fill out the Name and Roll Number for all participants.');
+        return;
+      }
+      
+      participants.push({
+        name: name,
+        roll_number: roll,
+        department: card.querySelector('.p-dept').value.trim(),
+        year: card.querySelector('.p-year').value,
+        affiliation: card.querySelector('.p-affil').value
+      });
+    }
+
+    // Require team name if it's a group
+    if (regMode === 'group' && !teamName) {
+      alert('Please enter a Group / Team Name.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-confirm-reg');
+    btn.textContent = 'Registering...';
+    btn.disabled = true;
+
+    try {
+      const response = await fetch('/api/register', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            event_id: currentEventId,
+            format: regMode,
+            team_name: regMode === 'group' ? teamName : null,
+            participants: participants
+        })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        if (typeof showToast === 'function') {
+          showToast(data.message || 'Successfully registered!', 'success');
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          window.location.reload(); 
+        }
+      } else {
+        alert(data.error || 'Failed to register.');
+      }
+    } catch(error) {
+      console.error("Registration error:", error);
+      alert('A network error occurred.');
+    } finally {
+      btn.textContent = 'Confirm Registration';
+      btn.disabled = false;
+    }
+  }
+  </script>
+</div>
+{% endblock %}

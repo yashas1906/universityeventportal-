@@ -1,0 +1,560 @@
+{% extends "base.html" %}
+{% block title %}{{ selected_school.name if selected_school else 'All Schools' }} Intelligence — Event Space{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- 🛡️ HIDDEN DATA STORE -->
+<div id="chart-data-store" style="display:none;">
+  <span id="d-yosL">{{ yos_labels | default([]) | tojson }}</span>
+  <span id="d-yosD">{{ yos_data | default([]) | tojson }}</span>
+  <span id="d-deptL">{{ dept_labels | default([]) | tojson }}</span>
+  <span id="d-deptD">{{ dept_data | default([]) | tojson }}</span>
+  <span id="d-catL">{{ cat_labels | default([]) | tojson }}</span>
+  <span id="d-catD">{{ cat_data | default([]) | tojson }}</span>
+  <span id="d-jL">{{ journey_labels | default([]) | tojson }}</span>
+  <span id="d-jE">{{ journey_events | default([]) | tojson }}</span>
+  <span id="d-jR">{{ journey_regs | default([]) | tojson }}</span>
+  <span id="d-bL">{{ bench_labels | default([]) | tojson }}</span>
+  <span id="d-bD">{{ bench_data | default([]) | tojson }}</span>
+  <span id="d-topTen">{{ top_students | default([]) | tojson }}</span>
+</div>
+
+<style>
+  :root {
+    --navy: #1e3a8a;
+    --royal: #2563eb;
+    --gold: #d4af37;
+    --teal: #0d9488;
+    --rose: #e11d48;
+    --slate: #64748b;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+  }
+
+  .analytics-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+    background-color: var(--bg);
+    min-height: 100vh;
+  }
+
+  .analytics-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analytics-header h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 10px;
+  }
+
+  .filter-select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #334155;
+  }
+
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .kpi-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kpi-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--slate);
+  }
+
+  .kpi-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1;
+  }
+
+  .tab-nav {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    padding: 0.6rem 1.5rem;
+    border: none;
+    background: transparent;
+    font-weight: 700;
+    color: var(--slate);
+    cursor: pointer;
+    border-radius: 9px;
+    transition: all 0.2s;
+  }
+
+  .tab-btn.active {
+    background: white;
+    color: var(--royal);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .chart-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .chart-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+
+  .chart-container {
+    height: 300px;
+    position: relative;
+  }
+
+  .perf-card {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .intensity-val {
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--navy);
+    line-height: 1;
+  }
+
+  .intensity-sub {
+    font-weight: 700;
+    color: var(--slate);
+    font-size: 0.9rem;
+  }
+
+  .intensity-avg {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--slate);
+  }
+
+  .intensity-avg strong { color: #0f172a; }
+
+  /* Ecosystem Styles */
+  .search-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 12px;
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-weight: 600;
+  }
+
+  .search-btn {
+    padding: 0 24px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .report-ui { display: none; }
+
+  .student-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .student-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #f1f5f9;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .student-item:hover { background: #f8fafc; }
+
+  .pts-badge {
+    background: #e0f2fe;
+    color: var(--royal);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 0.85rem;
+  }
+
+  .tag {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    background: #f1f5f9;
+  }
+</style>
+
+<div class="analytics-page">
+  <div class="analytics-header-row">
+    <div class="analytics-header">
+      <h1>School Intelligence</h1>
+      <p style="color:var(--slate); margin:4px 0 0;">{{ selected_school.name if selected_school else 'University-wide Perspective' }}</p>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px;">
+      <a href="{{ url_for('school_events') }}" style="color:var(--slate); font-weight:700; text-decoration:none; font-size:0.9rem;">← Back to Events</a>
+      <div class="filter-bar">
+        <select id="academic_year" class="filter-select" onchange="updateFilters()">
+          <option value="2025-26" {% if selected_year == '2025-26' %}selected{% endif %}>2025-26</option>
+          <option value="2024-25" {% if selected_year == '2024-25' %}selected{% endif %}>2024-25</option>
+          <option value="2023-24" {% if selected_year == '2023-24' %}selected{% endif %}>2023-24</option>
+        </select>
+        <select id="school_id" class="filter-select" onchange="updateFilters()">
+          <option value="all">All Schools</option>
+          {% for s in schools %}
+          <option value="{{ s.school_id }}" {% if selected_school and selected_school.school_id == s.school_id %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi-card">
+      <span class="kpi-label">Total Events Hosted</span>
+      <span class="kpi-value">{{ total_events }}</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Student Footfall</span>
+      <span class="kpi-value">{{ total_participants }}</span>
+    </div>
+    <div class="kpi-card" style="border-left: 4px solid var(--gold);">
+      <span class="kpi-label">Engagement Intensity</span>
+      <span class="kpi-value">{{ intensity }}</span>
+    </div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('horizon', this)">Horizon</button>
+    <button class="tab-btn" onclick="switchTab('dynamics', this)">Dynamics</button>
+    <button class="tab-btn" onclick="switchTab('journey', this)">Journey</button>
+    <button class="tab-btn" onclick="switchTab('ecosystem', this)">Ecosystem</button>
+  </div>
+
+  <!-- TAB: HORIZON -->
+  <div class="tab-pane active" id="pane-horizon">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <p class="chart-title">Target Audience Reach (By Year of Study)</p>
+        <div class="chart-container"><canvas id="c-yos"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <p class="chart-title">In-School Participation Matrix (By Dept)</p>
+        <div class="chart-container"><canvas id="c-dept"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: DYNAMICS -->
+  <div class="tab-pane" id="pane-dynamics">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <p class="chart-title">Category Focus (Event Distribution)</p>
+        <div class="chart-container"><canvas id="c-cat"></canvas></div>
+      </div>
+      <div class="chart-card perf-card">
+        <p class="chart-title" style="margin-bottom:1rem;">Performance Benchmark</p>
+        <div class="intensity-val">{{ intensity }}</div>
+        <div class="intensity-sub">REGISTRATIONS / EVENT</div>
+        <div class="intensity-avg">University Average: <strong>{{ univ_avg }}</strong></div>
+        <div style="margin-top:1rem; font-weight:800; color: {% if intensity >= univ_avg %}#10b981{% else %}#e11d48{% endif %};">
+          {% if intensity >= univ_avg %}EXCEEDING AVG{% else %}BELOW AVG{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: JOURNEY -->
+  <div class="tab-pane" id="pane-journey">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <p class="chart-title">Cumulative Growth Journey (Events & Regs)</p>
+        <div class="chart-container"><canvas id="c-journey"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <p class="chart-title">Inter-School Contribution Benchmark</p>
+        <div class="chart-container"><canvas id="c-bench"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: ECOSYSTEM (Student Intelligence Hub) -->
+  <div class="tab-pane" id="pane-ecosystem">
+    <div style="display: flex; gap: 2rem; align-items: flex-start;">
+      
+      <!-- Left Column (33%): Top 10 Performers -->
+      <div class="chart-card" style="flex: 1; min-width: 300px; position: sticky; top: 1.5rem;">
+        <p class="chart-title">Top 10 Performing Scholars</p>
+        <div style="overflow-y: auto; max-height: calc(100vh - 350px);">
+          <ul class="student-list" id="topTenList">
+            <!-- Populated via JS for safety -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- Right Column (66%): Search & Report UI -->
+      <div style="flex: 2; min-width: 0; display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- Search Bar -->
+        <div class="search-section" style="margin-bottom: 0;">
+          <input type="text" id="studentSearchInput" class="search-input" placeholder="Search Register ID (e.g. 24CU1530...)" onkeypress="if(event.key==='Enter') searchStudent()">
+          <button class="search-btn" onclick="searchStudent()">Generate Report</button>
+        </div>
+
+        <!-- Report Area -->
+        <div id="student-report-ui" class="report-ui">
+          <div class="chart-grid">
+            <div class="chart-card">
+              <p class="chart-title" id="studentName">Participation Activity Trend</p>
+              <div class="chart-container"><canvas id="c-heatmap"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <p class="chart-title">Skill Category Affinity (Radar)</p>
+              <div class="chart-container"><canvas id="c-radar"></canvas></div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <p class="chart-title">Detailed Participation Timeline</p>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="text-align: left; color: var(--slate); font-size: 0.8rem; border-bottom: 2px solid var(--border);">
+                    <th style="padding: 12px;">EVENT TITLE</th>
+                    <th style="padding: 12px;">DATE</th>
+                    <th style="padding: 12px;">CATEGORY</th>
+                    <th style="padding: 12px;">POINTS</th>
+                  </tr>
+                </thead>
+                <tbody id="student-event-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty / Error State -->
+        <div id="student-placeholder" class="chart-card" style="flex: 1; min-height: 400px; justify-content: center; align-items: center; text-align: center; border: 1px dashed var(--slate); box-shadow: none;">
+          <div id="placeholder-content" style="max-width: 350px;">
+            <div id="placeholder-icon" style="font-size: 3rem; color: var(--slate); opacity: 0.3; margin-bottom: 1rem;">🔍</div>
+            <p id="placeholder-text" style="color: var(--slate); font-style: italic; font-weight: 600;">Enter a Register ID or select a scholar from the list to generate an intelligence report.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function updateFilters() {
+    const y = document.getElementById('academic_year').value;
+    const s = document.getElementById('school_id').value;
+    window.location.href = `/school/analytics?academic_year=${y}&school_id=${s}`;
+  }
+
+  function switchTab(n, b) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById('pane-' + n).classList.add('active');
+    b.classList.add('active');
+  }
+
+  const COLORS = ['#1e3a8a', '#2563eb', '#d4af37', '#0d9488', '#7c3aed', '#e11d48', '#4d7c5f', '#64748b'];
+  const BASE_OPTS = { 
+    maintainAspectRatio: false, 
+    plugins: { legend: { labels: { font: { family: 'Inter', weight: 600, size: 10 } } } } 
+  };
+
+  function getD(id) {
+    try { return JSON.parse(document.getElementById(id).textContent); } catch(e) { return []; }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const data = {
+      yosL: getD('d-yosL'), yosD: getD('d-yosD'),
+      deptL: getD('d-deptL'), deptD: getD('d-deptD'),
+      catL: getD('d-catL'), catD: getD('d-catD'),
+      jL: getD('d-jL'), jE: getD('d-jE'), jR: getD('d-jR'),
+      bL: getD('d-bL'), bD: getD('d-bD'),
+      topTen: getD('d-topTen')
+    };
+
+    // Populate Top 10 List from JSON store
+    const listEl = document.getElementById('topTenList');
+    if(listEl && data.topTen.length) {
+      listEl.innerHTML = data.topTen.map((s, idx) => `
+        <li class="student-item" onclick="searchStudent('${s[1]}')">
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-weight: 700; font-size: 0.9rem;">${idx+1}. ${s[0]}</span>
+            <span style="color: var(--slate); font-size: 0.75rem; font-weight: 600;">${s[1]}</span>
+          </div>
+          <span class="pts-badge">${s[2]} PTS</span>
+        </li>
+      `).join('');
+    }
+
+    function mk(id, type, labels, datasets, extra = {}) {
+      const c = document.getElementById(id);
+      if (!c || !labels.length) return;
+      new Chart(c, {
+        type,
+        data: { labels, datasets },
+        options: Object.assign({}, BASE_OPTS, extra)
+      });
+    }
+
+    mk('c-yos', 'bar', data.yosL, [{ label: 'Students', data: data.yosD, backgroundColor: '#1e3a8a', borderRadius: 6 }]);
+    mk('c-dept', 'pie', data.deptL, [{ data: data.deptD, backgroundColor: COLORS, borderWidth: 0 }]);
+    mk('c-cat', 'doughnut', data.catL, [{ data: data.catD, backgroundColor: COLORS, borderWidth: 0 }], { cutout: '70%' });
+    
+    mk('c-journey', 'line', data.jL, [
+      { label: 'Events', data: data.jE, borderColor: '#d4af37', backgroundColor: 'rgba(212,175,55,0.1)', fill: true, tension: 0.4 },
+      { label: 'Regs', data: data.jR, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.05)', fill: true, tension: 0.4 }
+    ], { 
+      scales: { 
+        y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, 
+        x: { grid: { display: false } } 
+      } 
+    });
+
+    mk('c-bench', 'bar', data.bL, [{ label: 'Total Events', data: data.bD, backgroundColor: '#1e3a8a', borderRadius: 6 }]);
+  });
+
+  let hmc = null, rdc = null;
+  async function searchStudent(rOverride) {
+    const inp = document.getElementById('studentSearchInput');
+    const r = (rOverride || inp.value).trim();
+    if (!r) return;
+    if (rOverride) inp.value = r;
+
+    const ui = document.getElementById('student-report-ui');
+    const placeholder = document.getElementById('student-placeholder');
+    const pText = document.getElementById('placeholder-text');
+    const pIcon = document.getElementById('placeholder-icon');
+    
+    try {
+      const res = await (await fetch(`/api/student_heatmap?roll_number=${encodeURIComponent(r)}`)).json();
+      
+      if (res.error) { 
+        ui.style.display = 'none';
+        placeholder.style.display = 'flex';
+        pIcon.innerText = '⚠️';
+        pIcon.style.color = '#e11d48';
+        pIcon.style.opacity = '1';
+        pText.innerText = res.error;
+        pText.style.color = '#e11d48';
+        return; 
+      }
+
+      placeholder.style.display = 'none';
+      ui.style.display = 'block';
+      document.getElementById('studentName').innerText = `${res.name} (${res.dept}) — Activity Report`;
+
+      if (hmc) hmc.destroy();
+      hmc = new Chart(document.getElementById('c-heatmap'), {
+        type: 'line',
+        data: {
+          labels: res.heatmap_labels,
+          datasets: [{ label: 'Engagements', data: res.heatmap_data, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.4 }]
+        },
+        options: BASE_OPTS
+      });
+
+      if (rdc) rdc.destroy();
+      rdc = new Chart(document.getElementById('c-radar'), {
+        type: 'radar',
+        data: {
+          labels: res.radar_labels,
+          datasets: [{ label: 'Interest', data: res.radar_data, backgroundColor: 'rgba(13,148,136,0.2)', borderColor: '#0d9488' }]
+        },
+        options: { maintainAspectRatio: false }
+      });
+
+      document.getElementById('student-event-body').innerHTML = res.events.map(e => `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding:12px; font-weight:700;">${e.title}</td>
+          <td style="padding:12px; color:var(--slate);">${e.date}</td>
+          <td style="padding:12px;"><span class="tag">${e.category}</span></td>
+          <td style="padding:12px; font-weight:800; color:var(--navy);">+${e.points}</td>
+        </tr>
+      `).join('');
+
+    } catch (e) {
+      console.error(e);
+      alert('Error fetching student data.');
+    }
+  }
+</script>
+{% endblock %}

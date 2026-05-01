@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+{% block title %}University Analytics — Event Space{% endblock %}
+
+{% block content %}
+<!-- Chart.js imported inside the content block so base.html cannot ignore it -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  .analytics-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+    overflow-x: hidden;
+    background-color: #f8f9fc;
+    min-height: 100vh;
+  }
+
+  .analytics-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .analytics-header h1 {
+    margin-bottom: 0.35rem;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .analytics-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin-top: 8px;
+  }
+
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .kpi-card {
+    background: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 1.75rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .kpi-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64748b;
+    order: 2;
+  }
+
+  .kpi-value {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1;
+    order: 1;
+  }
+
+  .kpi-card.gold-accent {
+    border-left: 4px solid #f59e0b;
+  }
+
+  .tab-container {
+    display: inline-flex;
+    background: #e2e8f0;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 2rem;
+    border: 1px solid #cbd5e1;
+  }
+
+  .atab-btn {
+    padding: 0.6rem 1.75rem;
+    border: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 7px;
+  }
+
+  .atab-btn:hover {
+    color: #1e293b;
+  }
+
+  .atab-btn.active {
+    background: #ffffff;
+    color: #2563eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .atab-pane {
+    display: none;
+  }
+
+  .atab-pane.active {
+    display: block;
+  }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .chart-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .chart-card {
+    background: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  .chart-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 280px;
+    width: 100%;
+  }
+
+  .chart-wrap canvas {
+    height: 100% !important;
+  }
+
+  .club-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.87rem;
+  }
+
+  .club-table th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 2px solid #f1f5f9;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    font-weight: 700;
+  }
+
+  .club-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f8fafc;
+    color: #334155;
+  }
+
+  .club-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .club-rank {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .club-bar-bg {
+    background: #f1f5f9;
+    border-radius: 4px;
+    height: 6px;
+    flex: 1;
+  }
+
+  .club-bar-fill {
+    background: #2563eb;
+    border-radius: 4px;
+    height: 6px;
+  }
+
+  .back-btn-float {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  }
+
+  .back-btn-float:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+  }
+</style>
+
+<div class="analytics-page">
+
+  <div class="analytics-header-row">
+    <div class="analytics-header">
+      <p class="eyebrow eyebrow-navy">University Intelligence</p>
+      <h1>University Intelligence</h1>
+      <p class="analytics-subtitle">Live insights across all 16 data dimensions — Horizon, Dynamics, Journey, Ecosystem.
+      </p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 16px;">
+      <a href="{{ url_for('university_events') }}" class="back-btn-float">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Event Feed
+      </a>
+
+      <!-- Academic Year Dropdown -->
+      <div
+        style="background: #f8fafc; padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px;">
+        <label for="academic_year" style="font-weight: 600; color: #475569; margin: 0; font-size: 0.9rem;">Academic
+          Year:</label>
+        <select id="academic_year" onchange="updateYear()"
+          style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-weight: 500; color: #0f172a; font-size: 0.9rem;">
+          <option value="2025-26" {% if request.args.get('academic_year', '2025-26' )=='2025-26' %}selected{% endif %}>
+            2025-26 (Current)</option>
+          <option value="2024-25" {% if request.args.get('academic_year')=='2024-25' %}selected{% endif %}>2024-25
+          </option>
+          <option value="2023-24" {% if request.args.get('academic_year')=='2023-24' %}selected{% endif %}>2023-24
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Strip -->
+  <div class="kpi-strip">
+    <div class="kpi-card">
+      <span class="kpi-value">{{ total_events }}</span>
+      <span class="kpi-label">Active Events</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-value">{{ total_footfall }}</span>
+      <span class="kpi-label">Total Registrations</span>
+    </div>
+    <div class="kpi-card gold-accent">
+      <span class="kpi-value">{{ total_schools }}</span>
+      <span class="kpi-label">OJAS Engagement Index</span>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-container">
+    <button class="atab-btn active" onclick="switchTab('horizon', this)">Horizon</button>
+    <button class="atab-btn" onclick="switchTab('dynamics', this)">Dynamics</button>
+    <button class="atab-btn" onclick="switchTab('journey', this)">Journey</button>
+    <button class="atab-btn" onclick="switchTab('ecosystem', this)">Ecosystem</button>
+  </div>
+
+  <!-- ══ TAB 1: HORIZON ══ -->
+  <div class="atab-pane active" id="pane-horizon">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <span class="chart-card-title">Macro Target Audience Reach (By Year)</span>
+        <div class="chart-wrap"><canvas id="university-reach-chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Student Engagement Index (%)</span>
+        <div class="chart-wrap"><canvas id="c-h2"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Monthly Event Volume Trend</span>
+        <div class="chart-wrap"><canvas id="c-h3"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Venue Distribution Analysis</span>
+        <div class="chart-wrap"><canvas id="c-h4"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 2: DYNAMICS ══ -->
+  <div class="atab-pane" id="pane-dynamics">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <span class="chart-card-title">Inter-School Competitive Leaderboard</span>
+        <div class="chart-wrap"><canvas id="c-d1"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">School Hosting Activity</span>
+        <div class="chart-wrap"><canvas id="c-d2"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Top Active Clubs & Organizers</span>
+        <div style="overflow-y: auto; max-height: 280px;">
+          <table class="club-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Club / Organizer</th>
+                <th>Events</th>
+                <th style="width:120px;">Share</th>
+              </tr>
+            </thead>
+            <tbody id="d3-tbody">
+              {% if d3_rows %}
+              {% set max_count = d3_rows[0].count %}
+              {% for row in d3_rows %}
+              <tr>
+                <td><span class="club-rank">{{ loop.index }}</span></td>
+                <td style="font-weight:600;">{{ row.club or '—' }}</td>
+                <td style="font-weight:700; color:#2563eb;">{{ row.count }}</td>
+                <td>
+                  <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div class="club-bar-bg">
+                      <div class="club-bar-fill" style="width:{{ ((row.count / max_count) * 100)|int }}%;"></div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+              {% else %}
+              <tr>
+                <td colspan="4" style="text-align:center; color:#94a3b8; padding:1.5rem; font-style:italic;">No data
+                  available for this year.</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Category Distribution by School</span>
+        <div class="chart-wrap"><canvas id="c-d4"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3: JOURNEY ══ -->
+  <div class="atab-pane" id="pane-journey">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <span class="chart-card-title">Cumulative Registration Growth</span>
+        <div class="chart-wrap"><canvas id="c-j1"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Participant Source Analysis</span>
+        <div class="chart-wrap"><canvas id="c-j2"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">University Participation Retention Funnel</span>
+        <div class="chart-wrap"><canvas id="retention-funnel-chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Individual Points Performance</span>
+        <div class="chart-wrap"><canvas id="c-j4"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 4: ECOSYSTEM ══ -->
+  <div class="atab-pane" id="pane-ecosystem">
+    <div class="chart-grid">
+      <div class="chart-card">
+        <span class="chart-card-title">Event Category Mix (Diet)</span>
+        <div class="chart-wrap"><canvas id="c-e1"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span class="chart-card-title">Student Demand Index (By Category)</span>
+          <span style="font-size:0.7rem; color:#64748b; font-weight:600;">Total Registrations</span>
+        </div>
+        <div class="chart-wrap"><canvas id="student-demand-chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Award & Rank Distribution</span>
+        <div class="chart-wrap"><canvas id="c-e3"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-card-title">Inter-Disciplinary School Diversity</span>
+        <div class="chart-wrap"><canvas id="c-e4"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ── JAVASCRIPT LOGIC ── */
+  function updateYear() {
+    const year = document.getElementById('academic_year').value;
+    window.location.href = `/university/analytics?academic_year=${year}`;
+  }
+
+  function switchTab(name, btn) {
+    document.querySelectorAll('.atab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.atab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('pane-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── COLOR PALETTE ── */
+  const NAVY = '#1e3a8a';
+  const ROYAL = '#2563eb';
+  const GOLD = '#d4af37';
+  const TEAL = '#0d9488';
+  const PURPLE = '#7c3aed';
+  const ROSE = '#e11d48';
+  const SAGE = '#4d7c5f';
+  const SLATE = '#64748b';
+
+  const PALETTE = [NAVY, ROYAL, GOLD, TEAL, PURPLE, ROSE, SAGE, SLATE,
+    '#0ea5e9', '#f59e0b', '#10b981', '#6366f1', '#ec4899', '#14b8a6', '#8b5cf6', '#f97316'];
+
+  const CHART_DEFAULTS = {
+    maintainAspectRatio: false,
+    plugins: { legend: { labels: { font: { family: 'Inter, sans-serif', size: 11 }, color: '#6b7280' } } },
+    scales: {}
+  };
+
+  function scaleOpts() {
+    return {
+      x: { ticks: { font: { size: 10 }, color: '#9ca3af' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+      y: { ticks: { font: { size: 10 }, color: '#9ca3af' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+    };
+  }
+
+  /* ── DATA FROM FLASK ── */
+  /* prettier-ignore */
+  const DATA = {
+    h1l: {{h1_labels|tojson|safe}}, h1v: {{h1_values|tojson|safe}},
+    h2l: {{h2_labels|tojson|safe}}, h2v: {{h2_values|tojson|safe}},
+    h3l: {{h3_labels|tojson|safe}}, h3v: {{h3_values|tojson|safe}},
+    h4l: {{h4_labels|tojson|safe}}, h4v: {{h4_values|tojson|safe}},
+    d1l: {{d1_labels|tojson|safe}}, d1v: {{d1_values|tojson|safe}},
+    d2l: {{d2_labels|tojson|safe}}, d2v: {{d2_values|tojson|safe}},
+    d4s: {{d4_schools|tojson|safe}}, d4d: {{d4_datasets|tojson|safe}},
+    j1l: {{j1_labels|tojson|safe}}, j1v: {{j1_values|tojson|safe}},
+    j2l: {{j2_labels|tojson|safe}}, j2i: {{j2_internal|tojson|safe}}, j2e: {{j2_external|tojson|safe}},
+    j3l: {{j3_labels|tojson|safe}}, j3v: {{j3_values|tojson|safe}},
+    j4l: {{j4_labels|tojson|safe}}, j4v: {{j4_values|tojson|safe}},
+    e1l: {{e1_labels|tojson|safe}}, e1v: {{e1_values|tojson|safe}},
+    e2l: {{e2_labels|tojson|safe}}, e2v: {{e2_values|tojson|safe}},
+    e3l: {{e3_labels|tojson|safe}}, e3v: {{e3_values|tojson|safe}},
+    e4l: {{e4_labels|tojson|safe}}, e4v: {{e4_values|tojson|safe}}
+  };
+
+  function mkChart(id, type, labels, datasets, extraOpts) {
+    try {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+
+      if (!labels || labels.length === 0 || !datasets || datasets.length === 0 || (datasets[0].data && datasets[0].data.length === 0)) {
+        ctx.parentElement.innerHTML = '<div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; color:#94a3b8; font-style:italic;">No data available for this year.</div>';
+        return;
+      }
+
+      const isRadial = ['pie', 'doughnut', 'polarArea'].includes(type);
+      const options = Object.assign({}, CHART_DEFAULTS, extraOpts || {});
+
+      if (!isRadial && (!extraOpts || !extraOpts.scales)) {
+        options.scales = scaleOpts();
+      }
+
+      new Chart(ctx, { type, data: { labels: labels, datasets: datasets }, options: options });
+    } catch (error) {
+      console.error("Chart Crash on " + id + ":", error);
+    }
+  }
+
+  /* ══ HORIZON ══ */
+  mkChart('university-reach-chart', 'bar', DATA.h1l, [{ label: 'Total Registrations', data: DATA.h1v, backgroundColor: NAVY, borderRadius: 4 }]);
+  mkChart('c-h2', 'bar', DATA.h2l, [{ label: 'Engagement %', data: DATA.h2v, backgroundColor: NAVY, borderRadius: 4 }], { indexAxis: 'y', scales: { x: { beginAtZero: true, max: 100, title: { display: true, text: 'Percentage of School Engaged' }, ticks: { font: { size: 10 }, color: '#9ca3af' }, grid: { color: 'rgba(0,0,0,0.05)' } }, y: { ticks: { font: { size: 10 }, color: '#9ca3af' }, grid: { color: 'rgba(0,0,0,0.05)' } } }, plugins: { tooltip: { callbacks: { label: (context) => ` ${context.raw}% of students active` } } } });
+  mkChart('c-h3', 'line', DATA.h3l, [{ label: 'Events', data: DATA.h3v, borderColor: ROYAL, backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: ROYAL }]);
+  mkChart('c-h4', 'doughnut', DATA.h4l, [{ data: DATA.h4v, backgroundColor: PALETTE, borderWidth: 0 }], { cutout: '60%', plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } });
+
+  /* ══ DYNAMICS ══ */
+  mkChart('c-d1', 'bar', DATA.d1l, [{ label: 'Points', data: DATA.d1v, backgroundColor: GOLD, borderRadius: 4 }]);
+  mkChart('c-d2', 'bar', DATA.d2l, [{ label: 'Events Hosted', data: DATA.d2v, backgroundColor: TEAL, borderRadius: 4 }]);
+  mkChart('c-d4', 'bar', DATA.d4s, (DATA.d4d || []).map((ds, i) => ({ label: ds.label, data: ds.data, backgroundColor: PALETTE[i % PALETTE.length], stack: 'stack', borderRadius: 3 })));
+
+  /* ══ JOURNEY ══ */
+  mkChart('c-j1', 'line', DATA.j1l, [{ label: 'Registrations', data: DATA.j1v, borderColor: PURPLE, backgroundColor: 'rgba(124,58,237,0.08)', fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: PURPLE }]);
+  mkChart('c-j2', 'bar', DATA.j2l, [{ label: 'Internal', data: DATA.j2i, backgroundColor: NAVY, borderRadius: 4 }, { label: 'External', data: DATA.j2e, backgroundColor: GOLD, borderRadius: 4 }]);
+  mkChart('retention-funnel-chart', 'bar', DATA.j3l, [{ label: 'Number of Students', data: DATA.j3v, backgroundColor: TEAL, borderRadius: 6 }], { plugins: { legend: { display: false } } });
+  mkChart('c-j4', 'line', DATA.j4l, [{ label: 'Points', data: DATA.j4v, borderColor: GOLD, backgroundColor: 'rgba(212,175,55,0.1)', fill: false, tension: 0, pointRadius: 5, pointBackgroundColor: GOLD }]);
+
+  /* ══ ECOSYSTEM ══ */
+  mkChart('c-e1', 'doughnut', DATA.e1l, [{ data: DATA.e1v, backgroundColor: PALETTE, borderWidth: 0 }], { cutout: '55%', plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } });
+  mkChart('student-demand-chart', 'bar', DATA.e2l, [{ label: 'Registrations', data: DATA.e2v, backgroundColor: NAVY, borderRadius: 5 }], { indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { font: { size: 10 }, color: '#9ca3af' }, grid: { color: 'rgba(0,0,0,0.05)' } }, y: { ticks: { font: { size: 10 }, color: '#9ca3af' }, grid: { display: false } } }, plugins: { legend: { display: false } } });
+  mkChart('c-e3', 'bar', DATA.e3l, [{ label: 'Awards', data: DATA.e3v, backgroundColor: ROSE, borderRadius: 4 }]);
+  mkChart('c-e4', 'polarArea', DATA.e4l, [{ data: DATA.e4v, backgroundColor: PALETTE.map(c => c + 'cc') }], { scales: { r: { ticks: { backdropColor: 'transparent', font: { size: 9 } } } }, plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } } });
+</script>
+{% endblock %}

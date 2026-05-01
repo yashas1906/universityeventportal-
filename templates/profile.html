@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Admin' if is_admin else 'Student' }} Profile — Event Space{% endblock %}
+
+{% block head %}
+<style>
+  .page-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    box-sizing: border-box;
+  }
+
+  .profile-layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 3rem;
+    margin-top: 2rem;
+  }
+
+  @media (max-width: 900px) {
+    .profile-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .heatmap-card {
+    background: var(--surface);
+    border: 1px solid var(--border-med);
+    border-radius: var(--r-lg);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .heatmap-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 12px);
+    grid-auto-columns: 12px;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scrollbar-width: thin;
+  }
+
+  .day {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--surface-muted);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  .day.level-1 {
+    background: #d1fae5;
+    border-color: #a7f3d0;
+  }
+
+  .day.level-2 {
+    background: #6ee7b7;
+    border-color: #34d399;
+  }
+
+  .day.level-3 {
+    background: #10b981;
+    border-color: #059669;
+  }
+
+  .day.level-4 {
+    background: #047857;
+    border-color: #065f46;
+  }
+
+  .sidebar-avatar {
+    width: 160px;
+    height: 160px;
+    margin: 0 auto 1.5rem auto;
+    background: var(--parchment);
+    border: 1px solid var(--border-med);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-serif);
+    font-size: 5rem;
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .edit-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="profile-layout">
+
+    <!-- LEFT SIDEBAR -->
+    <aside style="text-align: center;">
+      {% if is_admin %}
+      <!-- ADMIN SIDEBAR -->
+      <div class="sidebar-avatar" style="background: var(--surface-muted);">{{ admin.admin_email[0]|upper }}</div>
+      <h1 style="margin-bottom: 0.25rem;">Administrator</h1>
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">{{ admin.role.replace('_', ' ')|title }}</p>
+
+      <button class="btn btn-outline" style="width: 100%; margin-bottom: 2.5rem;" onclick="toggleEdit()">Update
+        Credentials</button>
+
+      <div
+        style="display: flex; flex-direction: column; gap: 1.25rem; font-size: 0.9rem; text-align: left; background: var(--surface-muted); padding: 1.5rem; border-radius: var(--r-lg); border: 1px solid var(--border);">
+        <div><label
+            style="display:block; font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Admin
+            Email</label><strong style="word-break: break-all;">{{ admin.admin_email }}</strong></div>
+        <div><label
+            style="display:block; font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Jurisdiction</label><strong>{{
+            school.name if school else 'University Level (All Schools)' }}</strong></div>
+      </div>
+      {% else %}
+      <!-- STUDENT SIDEBAR -->
+      <div class="sidebar-avatar">{{ participant.name[0]|upper }}</div>
+      <h1 style="margin-bottom: 0.25rem;">{{ participant.name }}</h1>
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">{{ participant.roll_number or 'Unassigned' }}</p>
+
+      <button class="btn btn-outline" style="width: 100%; margin-bottom: 2.5rem;" onclick="toggleEdit()">Edit
+        Profile</button>
+
+      <div
+        style="display: flex; flex-direction: column; gap: 1.25rem; font-size: 0.9rem; text-align: left; background: var(--surface-muted); padding: 1.5rem; border-radius: var(--r-lg); border: 1px solid var(--border);">
+        <div><label
+            style="display:block; font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Email</label><strong
+            style="word-break: break-all;">{{ participant.email }}</strong></div>
+        <div><label
+            style="display:block; font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Phone</label><strong>{{
+            participant.phone_number or 'Not Set' }}</strong></div>
+
+        <div><label
+            style="display:block; font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Academic
+            School</label><strong>{{ participant.department or 'Not Set' }}</strong></div>
+        {% if participant.course %}
+        <div><label
+            style="display:block; font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Program</label><strong>{{
+            participant.course }} {% if participant.branch %}({{ participant.branch }}){% endif %}</strong></div>
+        {% endif %}
+        <div><label
+            style="display:block; font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem;">Year
+            of Study</label><strong>{% if participant.year_of_study %}Year {{ participant.year_of_study }}{% else %}Not
+            Set{% endif %}</strong></div>
+      </div>
+      {% endif %}
+    </aside>
+
+    <!-- RIGHT MAIN CONTENT -->
+    <main style="min-width: 0;">
+      {% if is_admin %}
+      <!-- ADMIN MAIN CONTENT -->
+      <h2 class="section-title" style="margin-bottom: 1rem;">Administrator Portal</h2>
+      <div class="card" style="padding: 2.5rem; background: var(--surface);">
+        <h3 style="margin-bottom: 1rem; font-family: var(--font-serif);">Welcome to your Admin Profile</h3>
+        <p style="color: var(--muted); line-height: 1.6; margin-bottom: 2rem;">
+          From here you can update your login credentials using the sidebar. To manage events, upload rosters, and view
+          analytics, please navigate to the Management Console.
+        </p>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">Go to Console</a>
+      </div>
+      {% else %}
+      <!-- STUDENT MAIN CONTENT -->
+      <h2 class="section-title" style="margin-bottom: 1rem;">Event Activity</h2>
+      <div class="heatmap-card">
+        <div class="heatmap-grid" id="heatmap"></div>
+        <div
+          style="display: flex; justify-content: flex-end; gap: 4px; margin-top: 15px; font-size: 0.75rem; color: var(--muted); align-items: center;">
+          <span style="margin-right: 4px;">Less</span>
+          <div class="day"></div>
+          <div class="day level-1"></div>
+          <div class="day level-2"></div>
+          <div class="day level-3"></div>
+          <div class="day level-4"></div>
+          <span style="margin-left: 4px;">More</span>
+        </div>
+      </div>
+
+      <!-- 1. UPCOMING REGISTERED EVENTS -->
+      <div class="section-header">
+        <h2 class="section-title">Upcoming Registered Events</h2>
+      </div>
+
+      {% set ns = namespace(has_upcoming=false, has_past=false) %}
+      
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 3rem;">
+        {% for reg in participated_events %}
+          {% if reg.event.event_date and reg.event.event_date >= now %}
+            {% set ns.has_upcoming = true %}
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-left: 3px solid var(--accent);">
+              <div>
+                <strong style="display: block; font-size: 1.05rem; margin-bottom: 0.2rem;">{{ reg.event.title }}</strong>
+                <span style="font-size: 0.85rem; color: var(--muted);">📅 {{ reg.event.event_date.strftime('%B %d, %Y') }}</span>
+              </div>
+              <span class="tag tag-navy">Registered</span>
+            </div>
+          {% endif %}
+        {% endfor %}
+        
+        {% if not ns.has_upcoming %}
+          <div class="empty-state" style="padding: 2rem;">No upcoming events. Browse the Explore tab to register!</div>
+        {% endif %}
+      </div>
+
+
+      <!-- 2. PAST PARTICIPATION HISTORY -->
+      <div class="section-header">
+        <h2 class="section-title">Participation History</h2>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for reg in participated_events %}
+          {% if reg.event.event_date and reg.event.event_date < now %}
+            {% set ns.has_past = true %}
+            <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
+              <div>
+                <strong style="display: block; font-size: 1.05rem; margin-bottom: 0.2rem; color: var(--text-secondary);">{{ reg.event.title }}</strong>
+                <span style="font-size: 0.85rem; color: var(--muted);">{{ reg.event.event_date.strftime('%B %d, %Y') }}</span>
+              </div>
+              {% if reg.rank_position %}
+                <span class="tag tag-gold" style="font-weight: 600;">🏆 Rank {{ reg.rank_position }}</span>
+              {% else %}
+                <span class="tag tag-muted">Participated</span>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+
+        {% if not ns.has_past %}
+          <div class="empty-state" style="padding: 2rem;">No past event activity recorded yet.</div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </main>
+  </div>
+</div>
+
+<!-- EDIT MODALS -->
+<div class="edit-modal" id="modal">
+  <div class="card" style="width: 480px; padding: 2.5rem; max-height: 90vh; overflow-y: auto;">
+
+    {% if is_admin %}
+    <!-- ADMIN EDIT FORM -->
+    <h2 style="margin-bottom: 1.5rem; font-family: var(--font-serif);">Update Credentials</h2>
+    <form action="{{ url_for('update_profile') }}" method="POST">
+      <div style="margin-bottom: 1.5rem;">
+        <label class="field-label">Admin Email</label>
+        <input type="email" name="admin_email" class="input" value="{{ admin.admin_email }}" required>
+      </div>
+      <div style="margin-bottom: 2.5rem;">
+        <label class="field-label">New Password</label>
+        <input type="password" name="password" class="input" placeholder="Leave blank to keep current password">
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+        <button type="button" class="btn btn-outline" style="flex: 1;" onclick="toggleEdit()">Cancel</button>
+      </div>
+    </form>
+
+    {% else %}
+    <!-- STUDENT EDIT FORM -->
+    <h2 style="margin-bottom: 1.5rem; font-family: var(--font-serif);">Update Information</h2>
+    <form action="{{ url_for('update_profile') }}" method="POST">
+      <div style="margin-bottom: 1rem;">
+        <label class="field-label">Full Name</label>
+        <input type="text" name="name" class="input" value="{{ participant.name }}" required>
+      </div>
+
+      <div class="grid-2" style="margin-bottom: 1.5rem;">
+        <div><label class="field-label">Roll Number</label><input type="text" name="roll_number" class="input"
+            value="{{ participant.roll_number or '' }}"></div>
+        <div><label class="field-label">Phone</label><input type="text" name="phone_number" class="input"
+            value="{{ participant.phone_number or '' }}"></div>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label class="field-label">Academic School</label>
+        <select name="department" class="input">
+          <option value="" {% if not participant.department %}selected{% endif %}>Select School</option>
+          <option value="School of Arts, Humanities and Social Sciences" {% if
+            participant.department=='School of Arts, Humanities and Social Sciences' %}selected{% endif %}>School of
+            Arts, Humanities and Social Sciences</option>
+          <option value="School of Biosciences" {% if participant.department=='School of Biosciences' %}selected{% endif
+            %}>School of Biosciences</option>
+          <option value="School of Engineering" {% if participant.department=='School of Engineering' %}selected{% endif
+            %}>School of Engineering</option>
+          <option value="School of Law, Governance and Public Policy" {% if
+            participant.department=='School of Law, Governance and Public Policy' %}selected{% endif %}>School of Law,
+            Governance and Public Policy</option>
+          <option value="School of Management Sciences" {% if participant.department=='School of Management Sciences'
+            %}selected{% endif %}>School of Management Sciences</option>
+          <option value="School of Mathematics and Natural Sciences" {% if
+            participant.department=='School of Mathematics and Natural Sciences' %}selected{% endif %}>School of
+            Mathematics and Natural Sciences</option>
+        </select>
+      </div>
+
+      <div class="grid-2" style="gap: 1rem; margin-bottom: 1rem;">
+        <div><label class="field-label">Course</label><input type="text" name="course" class="input"
+            value="{{ participant.course or '' }}" placeholder="e.g. B.Tech"></div>
+        <div><label class="field-label">Branch</label><input type="text" name="branch" class="input"
+            value="{{ participant.branch or '' }}" placeholder="e.g. CS&AI"></div>
+      </div>
+
+      <div style="margin-bottom: 2rem;">
+        <label class="field-label">Year of Study</label>
+        <select name="year_of_study" class="input">
+          <option value="" {% if not participant.year_of_study %}selected{% endif %}>Select Year</option>
+          <option value="1" {% if participant.year_of_study|string=='1' %}selected{% endif %}>1st Year</option>
+          <option value="2" {% if participant.year_of_study|string=='2' %}selected{% endif %}>2nd Year</option>
+          <option value="3" {% if participant.year_of_study|string=='3' %}selected{% endif %}>3rd Year</option>
+          <option value="4" {% if participant.year_of_study|string=='4' %}selected{% endif %}>4th Year</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 1rem;">
+        <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+        <button type="button" class="btn btn-outline" style="flex: 1;" onclick="toggleEdit()">Cancel</button>
+      </div>
+    </form>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleEdit() {
+    const m = document.getElementById('modal');
+    m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+  }
+
+  {% if not is_admin %}
+  function initHeatmap() {
+    const container = document.getElementById('heatmap');
+    if (!container) return;
+    const activity = {};
+    {% for reg in participated_events %}
+    { let d = "{{ reg.registered_at.strftime('%Y-%m-%d') }}"; activity[d] = (activity[d] || 0) + 1; }
+    {% endfor %}
+
+    const today = new Date();
+    for (let i = 0; i < 365; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() - (364 - i));
+      const dateStr = d.toISOString().split('T')[0];
+      const level = activity[dateStr] ? Math.min(activity[dateStr], 4) : 0;
+
+      const square = document.createElement('div');
+      square.className = 'day' + (level > 0 ? ' level-' + level : '');
+      const eventCount = activity[dateStr] || 0;
+      square.title = `${dateStr}: ${eventCount} event${eventCount !== 1 ? 's' : ''}`;
+      container.appendChild(square);
+    }
+    setTimeout(() => { container.scrollLeft = container.scrollWidth; }, 100);
+  }
+
+  document.addEventListener('DOMContentLoaded', initHeatmap);
+  {% endif %}
+</script>
+{% endblock %}

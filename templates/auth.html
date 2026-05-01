@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% block title %}Sign In — Event Space{% endblock %}
+
+{% block head %}
+<style>
+  .auth-wrap {
+    min-height: calc(100vh - 64px - 88px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 500px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+
+  .auth-card-top {
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+  }
+
+  .auth-body {
+    padding: 2.25rem 2rem;
+  }
+
+  /* Type switcher (Student / Administrator) */
+  .type-switcher {
+    display: flex;
+    background: var(--elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 0.3rem;
+    gap: 0.3rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .type-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border: none;
+    background: transparent;
+    border-radius: var(--r-md);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  .type-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: var(--shadow-xs);
+  }
+
+  /* Login / Signup sub-tabs */
+  .mode-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.75rem;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 0.65rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    font-family: var(--font-sans);
+    font-size: 0.87rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  .mode-tab.active {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* Role cards */
+  .role-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 0.6rem;
+    background: var(--surface);
+  }
+
+  .role-card:hover {
+    border-color: var(--border-med);
+    background: var(--surface-muted);
+  }
+
+  .role-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+  }
+
+  .role-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--border-med);
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .role-card.selected .role-dot {
+    border-color: var(--accent);
+  }
+
+  .role-card.selected .role-dot::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  .admin-fields {
+    display: none;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--divider);
+    margin-top: 0.5rem;
+    animation: fade-in 0.2s ease;
+  }
+
+  .admin-fields.show {
+    display: block;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .btn-full {
+    width: 100%;
+    padding: 0.8rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-md);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: background 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-full:hover {
+    background: var(--accent-mid);
+  }
+
+  .btn-full:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .field {
+    margin-bottom: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-card-top"></div>
+    <div class="auth-body">
+
+      <div style="text-align:center; margin-bottom:1.75rem;">
+        <p class="eyebrow eyebrow-navy" style="margin-bottom:0.4rem;">Event Space</p>
+        <h1 id="auth-title" style="font-size:1.75rem; margin-bottom:0.3rem;">Welcome back</h1>
+        <p id="auth-sub" style="font-size:0.87rem; color:var(--muted);">Sign in to your account to continue.</p>
+      </div>
+
+      <!-- STUDENT / ADMIN SWITCHER -->
+      <div class="type-switcher">
+        <button class="type-btn active" id="btn-student" onclick="switchType('student')">Student</button>
+        <button class="type-btn" id="btn-admin" onclick="switchType('admin')">Administrator</button>
+      </div>
+
+      <!-- ═══ STUDENT PANEL ═══ -->
+      <div id="panel-student">
+        <div class="mode-tabs">
+          <button class="mode-tab" id="tab-login" onclick="setMode('login')">Log In</button>
+          <button class="mode-tab active" id="tab-signup" onclick="setMode('signup')">Sign Up</button>
+        </div>
+
+        <form action="{{ url_for('login') }}" method="POST">
+          <input type="hidden" name="action" value="student_login">
+          <input type="hidden" name="mode" id="mode-input" value="signup">
+
+          <div id="signup-fields">
+            <div class="grid-2" style="gap:0.85rem; margin-bottom:0.85rem;">
+              <div class="field" style="margin:0;"><label class="field-label">First Name</label><input type="text"
+                  name="first_name" class="input" placeholder="John"></div>
+              <div class="field" style="margin:0;"><label class="field-label">Last Name</label><input type="text"
+                  name="last_name" class="input" placeholder="Doe"></div>
+            </div>
+            <div class="grid-2" style="gap:0.85rem; margin-bottom:0.85rem;">
+              <div class="field" style="margin:0;"><label class="field-label">Register ID</label><input type="text"
+                  name="roll_number" class="input" placeholder="24UG0..."></div>
+              <div class="field" style="margin:0;"><label class="field-label">Phone</label><input type="tel"
+                  name="phone_number" class="input" placeholder="98765..."></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Academic School</label>
+              <select name="department" class="input">
+                <option value="">— Select School —</option>
+                <option>School of Arts, Humanities and Social Sciences</option>
+                <option>School of Biosciences</option>
+                <option>School of Engineering</option>
+                <option>School of Law, Governance and Public Policy</option>
+                <option>School of Management Sciences</option>
+                <option>School of Mathematics and Natural Sciences</option>
+              </select>
+            </div>
+            <div class="grid-2" style="gap:0.85rem; margin-bottom:0.85rem;">
+              <div class="field" style="margin:0;"><label class="field-label">Course</label><input type="text"
+                  name="course" class="input" placeholder="e.g. B.Tech"></div>
+              <div class="field" style="margin:0;"><label class="field-label">Branch</label><input type="text"
+                  name="branch" class="input" placeholder="e.g. CS&AI"></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Year of Study</label>
+              <select name="year_of_study" class="input">
+                <option value="">— Select Year —</option>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Email Address</label>
+            <input type="email" name="email" id="email-input" class="input" placeholder="student@gmail.com" required>
+          </div>
+          <div class="field" style="margin-bottom:1.5rem;">
+            <label class="field-label">Password</label>
+            <input type="password" name="password" class="input" placeholder="••••••••" required>
+          </div>
+
+          <button type="submit" class="btn-full" id="student-submit">Sign Up</button>
+        </form>
+      </div>
+
+      <!-- ═══ ADMIN PANEL ═══ -->
+      <div id="panel-admin" style="display:none;">
+        <p style="font-size:0.84rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.75rem;">Select your
+          authorization tier:</p>
+
+        <div class="role-card" onclick="selectRole('school_admin', this)">
+          <div class="role-dot"></div>
+          <div>
+            <div style="font-weight:600; font-size:0.9rem;">School Admin</div>
+            <div style="font-size:0.75rem; color:var(--muted);">Manage events for a specific school.</div>
+          </div>
+        </div>
+        <div class="role-card" onclick="selectRole('university_admin', this)">
+          <div class="role-dot"></div>
+          <div>
+            <div style="font-weight:600; font-size:0.9rem;">University Admin</div>
+            <div style="font-size:0.75rem; color:var(--muted);">Manage cross-campus global events.</div>
+          </div>
+        </div>
+
+        <div id="admin-fields" class="admin-fields">
+          <div id="school-field" class="field" style="display:none;">
+            <label class="field-label">School Assignment</label>
+            <select id="sa-school" class="input">
+              <option value="">— Select your school —</option>
+              <option value="1">School of Arts, Humanities and Social Sciences</option>
+              <option value="2">School of Mathematics and Natural Sciences</option>
+              <option value="3">School of Biosciences</option>
+              <option value="4">School of Management Sciences</option>
+              <option value="5">School of Law, Governance and Public Policy</option>
+              <option value="6">School of Engineering</option>
+            </select>
+          </div>
+          <div class="field"><label class="field-label">Admin Email</label><input type="text" id="admin-id"
+              class="input" placeholder="admin@example.com"></div>
+          <div class="field"><label class="field-label">Master Password</label><input type="password" id="admin-pw"
+              class="input" placeholder="••••••••"></div>
+        </div>
+
+        <!-- Hidden form submitted programmatically -->
+        <form id="admin-form" method="POST" action="{{ url_for('login') }}" style="display:none;">
+          <input type="hidden" name="action" value="admin_login">
+          <input type="hidden" name="role" id="h-role">
+          <input type="hidden" name="admin_id" id="h-id">
+          <input type="hidden" name="password" id="h-pw">
+          <input type="hidden" name="school_id" id="h-school">
+        </form>
+
+        <button class="btn-full" id="admin-submit" style="display:none;" onclick="submitAdmin()">Continue as
+          Admin</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentType = 'student';
+  let selectedRole = null;
+
+  function switchType(type) {
+    currentType = type;
+    document.getElementById('panel-student').style.display = type === 'student' ? 'block' : 'none';
+    document.getElementById('panel-admin').style.display = type === 'admin' ? 'block' : 'none';
+    document.getElementById('btn-student').classList.toggle('active', type === 'student');
+    document.getElementById('btn-admin').classList.toggle('active', type === 'admin');
+
+    if (type === 'admin') {
+      document.getElementById('auth-title').textContent = 'Admin Console';
+      document.getElementById('auth-sub').textContent = 'Select your role and authenticate.';
+    } else {
+      setMode(document.getElementById('mode-input').value || 'login');
+    }
+  }
+
+  function setMode(mode) {
+    document.getElementById('mode-input').value = mode;
+    const isSignup = mode === 'signup';
+
+    document.getElementById('tab-login').classList.toggle('active', !isSignup);
+    document.getElementById('tab-signup').classList.toggle('active', isSignup);
+    document.getElementById('signup-fields').style.display = isSignup ? 'block' : 'none';
+    document.getElementById('student-submit').textContent = isSignup ? 'Sign Up' : 'Sign In';
+    document.getElementById('auth-title').textContent = isSignup ? 'Create your account' : 'Welcome back';
+    document.getElementById('auth-sub').textContent = isSignup ? 'Register with your university email.' : 'Sign in to access events and analytics.';
+  }
+
+  function selectRole(role, el) {
+    selectedRole = role;
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+
+    document.getElementById('admin-fields').classList.add('show');
+    document.getElementById('admin-submit').style.display = 'block';
+    document.getElementById('school-field').style.display = role === 'school_admin' ? 'block' : 'none';
+
+    const labels = { school_admin: 'Sign In as School Admin', university_admin: 'Sign In as University Admin' };
+    document.getElementById('admin-submit').textContent = labels[role];
+  }
+
+  function submitAdmin() {
+    if (!selectedRole) return;
+    document.getElementById('h-role').value = selectedRole;
+    document.getElementById('h-id').value = document.getElementById('admin-id').value;
+    document.getElementById('h-pw').value = document.getElementById('admin-pw').value;
+    document.getElementById('h-school').value = document.getElementById('sa-school')?.value || '';
+    document.getElementById('admin-form').submit();
+  }
+
+  // Init from URL param
+  const urlMode = new URLSearchParams(window.location.search).get('mode') || 'login';
+  setMode(urlMode);
+</script>
+{% endblock %}

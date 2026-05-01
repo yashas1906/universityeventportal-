@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+{% block title %}Event Schedule — Chanakya University{% endblock %}
+
+{% block head %}
+<style>
+  /* Base Layout */
+  .schedule-layout {
+    display: flex;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    align-items: flex-start;
+  }
+
+  /* Sidebar (Time Filters) */
+  .sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    padding: 1rem 0.75rem;
+    position: sticky;
+    top: 2rem;
+  }
+
+  .time-filter {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.95rem;
+    border-radius: var(--r-lg);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+  }
+
+  .time-filter svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    opacity: 0.7;
+  }
+
+  .time-filter:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .time-filter.active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+  }
+
+  .time-filter.active svg {
+    opacity: 1;
+  }
+
+  /* Main Content Area */
+  .main-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Category Pills (Top Navigation) */
+  .category-nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .cat-pill {
+    padding: 0.5rem 1.25rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+
+  .cat-pill:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+  }
+
+  .cat-pill.active {
+    background: var(--text);
+    color: var(--surface);
+    border-color: var(--text);
+  }
+
+  /* --- DATE GROUPING STYLES --- */
+  .date-group {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  /* The Date Column on the Left */
+  .date-block {
+    width: 60px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #0a0a0a;
+    color: #fff;
+    border-radius: 8px;
+    padding: 0.75rem 0.5rem;
+    height: fit-content;
+  }
+
+  .date-block .day-week {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+  }
+
+  .date-block .day-num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 0.1rem 0;
+  }
+
+  .date-block .month-name {
+    font-size: 0.7rem;
+    font-weight: 600;
+    opacity: 0.6;
+  }
+
+  /* The Grid of Events Next to the Date */
+  .event-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* Event Card */
+  .event-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+    /* Force all cards in a row to be the same height */
+  }
+
+  .event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-strong);
+  }
+
+  .card-category-tag {
+    background: var(--surface-muted);
+    color: var(--text);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+  }
+
+  /* Card Body */
+  .card-body {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-title {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .card-meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .meta-row svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+  }
+
+  /* Empty State */
+  .empty-state {
+    display: none;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-xl);
+  }
+
+  .empty-state.visible {
+    display: block;
+  }
+
+  @media (max-width: 800px) {
+    .schedule-layout {
+      flex-direction: column;
+    }
+
+    .sidebar {
+      width: 100%;
+      position: static;
+      display: flex;
+      overflow-x: auto;
+      padding: 0.5rem;
+      gap: 0.5rem;
+    }
+
+    .time-filter {
+      width: auto;
+      white-space: nowrap;
+      padding: 0.6rem 1rem;
+    }
+
+    .date-group {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .date-block {
+      flex-direction: row;
+      width: 100%;
+      justify-content: flex-start;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      align-items: baseline;
+    }
+
+    .date-block .day-num {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div style="margin-bottom: 2rem;">
+    <h1 style="margin-bottom:0.3rem;">Schedule</h1>
+    <p style="font-size:0.95rem; color:var(--muted);">Browse and register for events across Chanakya University.</p>
+  </div>
+
+  <div class="schedule-layout">
+
+    <!-- LEFT SIDEBAR: Time Filters -->
+    <aside class="sidebar">
+      <button class="time-filter" data-time="today">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+          <rect x="8" y="14" width="8" height="4" fill="currentColor"></rect>
+        </svg>
+        Today
+      </button>
+      <button class="time-filter" data-time="upcoming">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+          <path d="M12 14l3 3 5-5"></path>
+        </svg>
+        Upcoming
+      </button>
+      <button class="time-filter" data-time="past">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v18h18" />
+          <path d="M3 12h12" />
+          <path d="M11 8l4 4-4 4" />
+        </svg>
+        Past Events
+      </button>
+      <!-- View All Time is now the default active state -->
+      <button class="time-filter active" data-time="all"
+        style="margin-top: 0.5rem; border-top: 1px solid var(--border); border-radius: 0; padding-top: 1.25rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="16"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+        View All Time
+      </button>
+    </aside>
+
+    <!-- RIGHT MAIN: Categories & Groups -->
+    <main class="main-content">
+
+      <!-- TOP NAV: Category Filters -->
+      <div class="category-nav">
+        <button class="cat-pill active" data-category="all">All</button>
+        {% for cat in categories %}
+        <button class="cat-pill" data-category="{{ cat }}">{{ cat }}</button>
+        {% endfor %}
+      </div>
+
+      <div id="scheduleContainer">
+        {% for group in grouped_events %}
+        <!-- DATE GROUP CONTAINER -->
+        <div class="date-group">
+
+          <!-- Date Block (Left Side) -->
+          <div class="date-block">
+            <div class="day-week">{{ group.date_info.day_of_week }}</div>
+            <div class="day-num">{{ group.date_info.day_num }}</div>
+            <div class="month-name">{{ group.date_info.month_short }}</div>
+          </div>
+
+          <!-- Events Grid for this Date (Right Side) -->
+          <div class="event-grid">
+            {% for ev in group.events %}
+            <div class="event-card" data-time-bucket="{{ ev.time_bucket }}" data-category="{{ ev.category }}"
+              onclick="registerForEvent('{{ ev.id }}', '{{ ev.title }}')">
+
+              <div class="card-body">
+                <!-- Clean, text-only top header with category pill -->
+                <div
+                  style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                  <span class="card-category-tag">{{ ev.category }}</span>
+                </div>
+
+                <h3 class="card-title">{{ ev.title }}</h3>
+
+                <div class="card-meta">
+                  <div class="meta-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span style="font-weight: 500; color: var(--text);">{{ ev.display_time }}</span>
+                  </div>
+                  <div class="meta-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span>{{ ev.venue }}</span>
+                  </div>
+                  <div class="meta-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>{{ ev.incharge_club }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border-strong)" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <h3 style="font-family: var(--font-serif); margin-bottom: 0.5rem; color: var(--text);">No events found</h3>
+        <p style="color: var(--muted); font-size: 0.9rem;">There are no events matching your selected filters.</p>
+      </div>
+
+    </main>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Set default view to 'all'
+  let currentTimeFilter = 'all';
+  let currentCatFilter = 'all';
+
+  function filterEvents() {
+    let totalVisibleEvents = 0;
+
+    const dateGroups = document.querySelectorAll('.date-group');
+
+    dateGroups.forEach(group => {
+      let visibleInGroup = 0;
+      const cards = group.querySelectorAll('.event-card');
+
+      cards.forEach(card => {
+        const timeBucket = card.dataset.timeBucket;
+        const category = card.dataset.category;
+
+        const timeMatch = (currentTimeFilter === 'all') || (timeBucket === currentTimeFilter);
+        const catMatch = (currentCatFilter === 'all') || (category === currentCatFilter);
+
+        if (timeMatch && catMatch) {
+          card.style.display = 'flex';
+          visibleInGroup++;
+          totalVisibleEvents++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      // Hide the entire Date Group (including the Date Block) if no events are visible inside it
+      if (visibleInGroup === 0) {
+        group.style.display = 'none';
+      } else {
+        group.style.display = 'flex';
+      }
+    });
+
+    // Toggle empty state
+    document.getElementById('emptyState').classList.toggle('visible', totalVisibleEvents === 0);
+  }
+
+  // Setup Time Filter Buttons (Sidebar)
+  document.querySelectorAll('.time-filter').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.time-filter').forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentTimeFilter = e.currentTarget.dataset.time;
+      filterEvents();
+    });
+  });
+
+  // Setup Category Pills (Top Nav)
+  document.querySelectorAll('.cat-pill').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      currentCatFilter = e.currentTarget.dataset.category;
+      filterEvents();
+    });
+  });
+
+  // Initialize view using the 'all' filter
+  document.querySelector('.time-filter[data-time="all"]').click();
+
+  function registerForEvent(eventId, title) {
+    if (!confirm('Register for ' + title + '?')) return;
+
+    fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_id: eventId })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) showToast(data.error, 'error');
+        else showToast(data.message, 'success');
+      });
+  }
+</script>
+{% endblock %}
