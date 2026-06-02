@@ -96,6 +96,13 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
+    /* Make the document a column flex layout so footer can be pinned */
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh; /* ensure body spans viewport */
+    }
+
     ::selection {
       background: var(--accent-light);
       color: var(--accent);
@@ -304,6 +311,12 @@
       padding: 3rem 2rem;
       position: relative;
       z-index: 1;
+    }
+
+    /* main area grows to fill available space so footer sits at bottom */
+    .site-main {
+      flex: 1 0 auto;
+      display: block;
     }
 
     .grid-2 {
@@ -953,7 +966,9 @@
   {% endif %}
   {% endwith %}
 
-  {% block content %}{% endblock %}
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
 
   <footer class="site-footer">
     <span class="site-footer-brand">Chanakya University &middot; Event Space</span>
